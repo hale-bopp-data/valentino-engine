@@ -1,0 +1,47 @@
+version: "2.0.0"
+
+guards:
+  secrets:
+    enabled: true
+    severity: blocking
+    critical_patterns:
+      - name: "Private Key"
+        pattern: '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----'
+        severity: critical
+      - name: "OpenAI / OpenRouter Key"
+        pattern: 'sk-[a-zA-Z0-9]{20,}'
+        severity: critical
+      - name: "Azure PAT"
+        pattern: '[A-Za-z0-9]{52}AAAA[A-Za-z0-9]{8}'
+        severity: critical
+      - name: "Generic API Key Assignment"
+        pattern: '(?i)(api[_-]?key|apikey)\\s*[:=]\\s*["\'][A-Za-z0-9\\-_]{20,}["\']'
+        severity: high
+    safe_patterns:
+      - '\\$\\{[A-Z_]+\\}'
+      - 'process\\.env\\.'
+
+  conflict_markers:
+    enabled: true
+    severity: blocking
+
+  large_file:
+    enabled: true
+    severity: blocking
+    max_size_kb: 512
+    exclude: ["package-lock.json"]
+
+  branch_policy:
+    enabled: true
+    severity: blocking
+    protected_branches: ["main"]
+
+  orphan:
+    enabled: true
+    severity: blocking
+    provider: ado
+
+exclusions:
+  binary_extensions: [".png", ".jpg", ".svg", ".ico", ".woff", ".woff2"]
+  skip_patterns: ["node_modules/", ".git/", "dist/"]
+  max_file_size_kb: 512
