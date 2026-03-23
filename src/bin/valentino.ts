@@ -1,82 +1,68 @@
 #!/usr/bin/env node
 /**
- * Valentino CLI — `npx @hale-bopp/valentino generate|audit|guardrails`
- *
- * VE-003: Full CLI implementation
+ * Valentino CLI — command router
+ * `npx @hale-bopp/valentino <command> [args]`
  */
 
-import { readFileSync } from 'fs';
-import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from '../core/guardrails.js';
-import { validatePageSpec } from '../core/page-spec.js';
+import { runAudit } from './commands/audit.js';
+import { runValidate } from './commands/validate.js';
+import { runGuardrails } from './commands/guardrails.js';
+import { runProbe } from './commands/probe.js';
+import { runCatalogResolve } from './commands/catalog.js';
+import { runManifestResolve } from './commands/manifest.js';
+import { runContrast } from './commands/contrast.js';
 
 const [,, command, ...args] = process.argv;
 
 switch (command) {
-  case 'audit': {
-    const file = args[0];
-    if (!file) {
-      console.error('Usage: valentino audit <path-to-css-file>');
-      process.exit(1);
-    }
-    const css = readFileSync(file, 'utf-8');
-    const pxViolations = checkNoHardcodedPx(css);
-    const colorViolations = checkNoHardcodedColor(css);
-    const namedColorViolations = checkNoNamedColor(css);
-    const all = [...pxViolations, ...colorViolations, ...namedColorViolations];
-    if (all.length === 0) {
-      console.log('✅ No guardrail violations found.');
-    } else {
-      console.log(`❌ ${all.length} violation(s) found:\n`);
-      all.forEach(v => console.log('  •', v));
-      process.exit(1);
-    }
-    break;
-  }
+    case 'audit':
+        runAudit(args);
+        break;
 
-  case 'validate': {
-    const file = args[0];
-    if (!file) {
-      console.error('Usage: valentino validate <path-to-pagespec.json>');
-      process.exit(1);
-    }
-    const json = JSON.parse(readFileSync(file, 'utf-8'));
-    const valid = validatePageSpec(json);
-    if (valid) {
-      console.log('✅ PageSpec is valid.');
-    } else {
-      console.error('❌ PageSpec is missing required fields (id, version, components).');
-      process.exit(1);
-    }
-    break;
-  }
+    case 'validate':
+        runValidate(args);
+        break;
 
-  case 'guardrails': {
-    const guardrails = [
-      '1. WhatIf di Layout — Wireframe first, code second',
-      '2. Component Boundary & Fallbacks — Error Boundaries on all API bridges',
-      '3. Design Token System — No hardcoded colors or px values',
-      '4. L3 Audit before Commit — ARIA, performance, and dependency check',
-      '5. Escalation to GEDI — Consult GEDI on architectural trade-offs',
-      '6. Zero UI-Debt — Reuse before creating',
-      '7. Electrical Socket Pattern — CSS root variables for all colors',
-      '8. Testudo Formation — No inline padding/margin overrides on containers',
-      '9. Tangible Legacy — No redundant CSS blocks',
-      '10. Visual Live Audit — Use MCP browser_screenshot or npm run test:e2e:valentino',
-    ];
-    console.log('\n🛡️  Valentino Engine — 10 Sovereign Guardrails\n');
-    guardrails.forEach(g => console.log(' ', g));
-    console.log();
-    break;
-  }
+    case 'guardrails':
+        runGuardrails();
+        break;
 
-  default:
-    console.log(`
+    case 'probe':
+        runProbe(args[0] || 'all', args.slice(1));
+        break;
+
+    case 'catalog':
+        if (args[0] === 'resolve') runCatalogResolve(args.slice(1));
+        else {
+            console.error('Usage: valentino catalog resolve <spec.json> --catalog <catalog.json>');
+            process.exit(1);
+        }
+        break;
+
+    case 'manifest':
+        if (args[0] === 'resolve') runManifestResolve(args.slice(1));
+        else {
+            console.error('Usage: valentino manifest resolve <manifest.json> --route /path');
+            process.exit(1);
+        }
+        break;
+
+    case 'contrast':
+        runContrast(args);
+        break;
+
+    default:
+        console.log(`
 🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
 
 Usage:
-  valentino audit <file.css>        Audit CSS for guardrail violations
-  valentino validate <spec.json>    Validate a Runtime PageSpec JSON
-  valentino guardrails              List all 10 Sovereign Guardrails
+  valentino audit <file.css>                                    Audit CSS for guardrail violations
+  valentino validate <spec.json>                                Validate a Runtime PageSpec JSON (V1)
+  valentino guardrails                                          List all 10 Sovereign Guardrails
+  valentino probe <rhythm|hero|integrity|all> <spec.json>       Run validation probes
+  valentino contrast <foreground> <background> [AA|AAA]         Check WCAG contrast ratio
+  valentino catalog resolve <spec.json> --catalog <catalog.json> Resolve spec with catalog
+  valentino manifest resolve <manifest.json> --route /path      Resolve route to page ID
 
 Epic: https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_workitems/edit/480
 `);
