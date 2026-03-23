@@ -49,5 +49,15 @@ export { validatePageSpec } from './core/page-spec.js';
 export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, GUARDRAILS } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
 
+// Validation probes
+export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';
+export type { ContrastLevel, ContrastResult } from './core/contrast.js';
+export { probeRhythm } from './core/rhythm.js';
+export type { RhythmWarning, RhythmProbeResult } from './core/rhythm.js';
+export { probeHeroContract } from './core/hero-contract.js';
+export type { HeroContractWarning, HeroContractResult } from './core/hero-contract.js';
+export { probeSectionIntegrity } from './core/section-integrity.js';
+export type { IntegrityWarning, IntegrityResult } from './core/section-integrity.js';
+
 // Skills
 export { premiumDesignSkill, webGuardrailsSkill, designGuidelinesSkill } from './skills/index.js';
