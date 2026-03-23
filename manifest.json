@@ -1,0 +1,97 @@
+{
+  "id": "agent_valentino",
+  "name": "Valentino (Figma-Level Designer & Web Architect)",
+  "level": "L3",
+  "classification": "specialist",
+  "version": "2.0.0",
+  "role": "ui_ux_designer",
+  "owner": "team-platform",
+  "description": "L3 Agent specialized in UI/UX Design, Web Guidelines, Backoffice Architecture, and Premium Pixel-Perfect implementation. Enforces antifragile design patterns and GEDI consultation on architectural decisions.",
+  "llm_config": {
+    "provider": "openrouter",
+    "api_base": "https://openrouter.ai/api/v1",
+    "env_var": "OPENROUTER_API_KEY",
+    "model": "deepseek/deepseek-v3.2",
+    "tier": "T2",
+    "temperature": 0.3,
+    "system_prompt": "agents/agent_valentino/PROMPTS.md",
+    "fallback": {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "api_base": "https://api.deepseek.com",
+      "env_var": "DEEPSEEK_API_KEY"
+    },
+    "_migrated_from": "deepseek/deepseek-chat"
+  },
+  "mcp_servers": {
+    "playwright": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp", "--headless"]
+    },
+    "easyway-gedi": {
+      "command": "npx",
+      "args": ["tsx", "agents/agent_gedi/mcp/index.ts"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  },
+  "skills": {
+    "global": [
+      "utilities",
+      "retrieval",
+      "git",
+      "analysis"
+    ],
+    "local": [
+      "valentino-premium-design",
+      "valentino-web-guardrails",
+      "web-design-guidelines"
+    ]
+  },
+  "guardrails": "agents/agent_valentino/VALENTINO_ANTIFRAGILE_GUARDRAILS.md",
+  "security": {
+    "allowed_actions": [
+      "read_repo",
+      "create_branch",
+      "commit_changes",
+      "open_pr"
+    ],
+    "human_gate_required_for": [
+      "merge_pr",
+      "push_main"
+    ],
+    "blast_radius": "LOW"
+  },
+  "required_gates": [
+    "wireframe_approval",
+    "design_review"
+  ],
+  "triggers": [
+    "UI/UX design request",
+    "wireframe or mockup generation",
+    "component implementation",
+    "design system review",
+    "frontend audit"
+  ],
+  "allowed_tools": [
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep",
+    "WebFetch",
+    "Bash"
+  ],
+  "error_handling": {
+    "on_uncertainty": "consult_gedi",
+    "on_conflict": "human_gate",
+    "max_retries": 2
+  },
+  "meta": {
+    "migrated_from": ".agents/agent_valentino",
+    "migration_session": "47",
+    "previous_level": "L2"
+  }
+}
