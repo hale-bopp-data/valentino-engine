@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { validatePageSpec } from './page-spec.js';
 
-describe('validatePageSpec', () => {
-  it('validates a correct PageSpec', () => {
-    const spec = { id: 'home', version: '1.0', components: [] };
+describe('validatePageSpec (V1)', () => {
+  it('validates a correct PageSpecV1', () => {
+    const spec = { version: '1', id: 'home', sections: [] };
     expect(validatePageSpec(spec)).toBe(true);
   });
 
@@ -16,24 +16,30 @@ describe('validatePageSpec', () => {
     expect(validatePageSpec(42)).toBe(false);
   });
 
+  it('rejects wrong version', () => {
+    expect(validatePageSpec({ version: '2', id: 'test', sections: [] })).toBe(false);
+  });
+
   it('rejects missing id', () => {
-    expect(validatePageSpec({ version: '1.0', components: [] })).toBe(false);
+    expect(validatePageSpec({ version: '1', sections: [] })).toBe(false);
   });
 
-  it('rejects missing version', () => {
-    expect(validatePageSpec({ id: 'test', components: [] })).toBe(false);
+  it('rejects missing sections', () => {
+    expect(validatePageSpec({ version: '1', id: 'test' })).toBe(false);
   });
 
-  it('rejects missing components', () => {
-    expect(validatePageSpec({ id: 'test', version: '1.0' })).toBe(false);
+  it('rejects sections as non-array', () => {
+    expect(validatePageSpec({ version: '1', id: 'test', sections: 'bad' })).toBe(false);
   });
 
-  it('rejects components as non-array', () => {
-    expect(validatePageSpec({ id: 'test', version: '1.0', components: 'bad' })).toBe(false);
-  });
-
-  it('accepts spec with optional meta field', () => {
-    const spec = { id: 'home', version: '1.0', components: [], meta: { author: 'valentino' } };
+  it('accepts spec with optional fields', () => {
+    const spec = {
+      version: '1' as const,
+      id: 'home',
+      profile: 'home-signature',
+      titleKey: 'page.home.title',
+      sections: [{ type: 'hero', titleKey: 'hero.title' }],
+    };
     expect(validatePageSpec(spec)).toBe(true);
   });
 });
