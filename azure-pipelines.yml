@@ -101,3 +101,12 @@ stages:
               echo "padding: 10px;" > /tmp/test-px.css
               node dist/bin/valentino.js audit /tmp/test-px.css && exit 1 || echo "Guardrail correctly blocked hardcoded px. ✅"
             displayName: 'CLI: valentino audit (px enforcement)'
+
+          - script: |
+              node dist/bin/valentino.js contrast "#000000" "#ffffff" AA
+            displayName: 'CLI: valentino contrast (smoke)'
+
+          - script: |
+              echo '{"version":"1","id":"smoke","sections":[{"type":"hero","titleKey":"h"},{"type":"cta","titleKey":"c"}]}' > /tmp/smoke-spec.json
+              node dist/bin/valentino.js probe all /tmp/smoke-spec.json
+            displayName: 'CLI: valentino probe all (smoke)'
