@@ -1,0 +1,47 @@
+{
+  "name": "@hale-bopp/valentino-engine",
+  "version": "0.1.0",
+  "description": "Antifragile Open Source UI Design Engine — generates Runtime PageSpec JSON, validates accessibility, enforces Design Tokens, and consults GEDI for architectural decisions.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "valentino": "dist/bin/valentino.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "mcp": "tsx src/mcp/index.ts",
+    "generate": "tsx src/bin/valentino.ts generate",
+    "audit": "tsx src/bin/valentino.ts audit"
+  },
+  "keywords": [
+    "ui",
+    "design-system",
+    "mcp",
+    "agent",
+    "antifragile",
+    "accessibility",
+    "open-source"
+  ],
+  "license": "MIT",
+  "author": "EasyWay Platform Team",
+  "repository": {
+    "type": "git",
+    "url": "https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_git/hale-bopp-valentino-engine"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.10.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
