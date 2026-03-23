@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { checkNoHardcodedPx, checkNoHardcodedColor } from '../core/guardrails.js';
+import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from '../core/guardrails.js';
 import { validatePageSpec } from '../core/page-spec.js';
 import { premiumDesignSkill, webGuardrailsSkill, designGuidelinesSkill } from '../skills/index.js';
 
@@ -21,7 +21,8 @@ server.tool(
   async ({ css }) => {
     const pxViolations = checkNoHardcodedPx(css);
     const colorViolations = checkNoHardcodedColor(css);
-    const violations = [...pxViolations, ...colorViolations];
+    const namedColorViolations = checkNoNamedColor(css);
+    const violations = [...pxViolations, ...colorViolations, ...namedColorViolations];
     const result = violations.length === 0
       ? { valid: true, message: 'No guardrail violations found.' }
       : { valid: false, violations };
