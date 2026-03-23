@@ -7,51 +7,84 @@
 
 ## What is Valentino Engine?
 
-Valentino Engine generates **Runtime PageSpec JSON**, validates accessibility, enforces Design Tokens, and consults GEDI for architectural decisions — all without a framework lock-in.
+Valentino Engine validates, resolves, and probes **Runtime PageSpec JSON** — the contract that drives UI rendering. It enforces Design Tokens, checks WCAG accessibility, validates page structure, and resolves catalog blueprints — all without framework lock-in.
 
-It was born from **Agent Valentino** (Epic #444), an L3 UI Specialist agent that acquired:
-- Multi-modal capabilities (MP4 video → Runtime JSON widget)
-- Remote Playwright visual audits
-- Chaos Resilience E2E testing
-- A11y Auto-Remediation
-- Multi-agent architecture consultation via Gedi MCP
+**Zero DOM. Zero fetch. Pure functions only.** You load data, the engine validates and resolves it.
 
 ## Quickstart
 
 ```bash
-# Audit a CSS file for guardrail violations
-npx @hale-bopp/valentino audit ./src/styles/theme.css
+# Audit CSS for guardrail violations (px, hex, named colors)
+npx @hale-bopp/valentino audit ./styles/theme.css
 
-# Validate a Runtime PageSpec JSON
-npx @hale-bopp/valentino validate ./public/pages/home.json
+# Validate a PageSpec JSON
+npx @hale-bopp/valentino validate ./pages/home.json
 
-# List all 10 Sovereign Guardrails
+# Run all structural probes on a page
+npx @hale-bopp/valentino probe all ./pages/home.json
+
+# Check WCAG contrast ratio
+npx @hale-bopp/valentino contrast "#333333" "#ffffff" AA
+
+# Resolve a spec with a catalog
+npx @hale-bopp/valentino catalog resolve ./pages/home.json --catalog ./catalog.json
+
+# List the 10 Sovereign Guardrails
 npx @hale-bopp/valentino guardrails
 ```
 
-## Use as an MCP Server
+## Library API
 
-Any MCP-compatible AI agent can connect to Valentino Engine directly:
+```typescript
+import {
+  // Types (18 section types, full PageSpecV1)
+  type PageSpecV1, type SectionSpec, type ValentinoCatalogV1,
+
+  // Validation
+  validatePageSpec, checkWcagContrast,
+
+  // CSS Guardrails
+  checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor,
+
+  // Probes
+  probeRhythm, probeHeroContract, probeSectionIntegrity,
+
+  // Catalog & Presentation
+  resolvePageSpecWithCatalog, resolvePresentation, inferRhythmProfile,
+
+  // Manifest
+  resolvePageIdByRoute,
+} from '@hale-bopp/valentino-engine';
+```
+
+## MCP Server (13 Tools)
+
+Any MCP-compatible AI agent can connect to Valentino Engine:
 
 ```json
 {
   "mcp_servers": {
     "valentino-engine": {
       "command": "npx",
-      "args": ["@hale-bopp/valentino", "mcp"]
+      "args": ["@hale-bopp/valentino-engine", "mcp"]
     }
   }
 }
 ```
 
-### Exposed Tools
-
 | Tool | Description |
 |------|-------------|
-| `valentino_audit_css` | Detects hardcoded px and color values |
-| `valentino_validate_pagespec` | Validates Runtime PageSpec JSON contract |
-| `valentino_get_skill` | Returns rules for a specific design skill |
-| `valentino_list_guardrails` | Lists all 10 Sovereign Guardrails |
+| `valentino_audit_css` | Audit CSS for hardcoded px, hex/rgba, and named colors |
+| `valentino_validate_pagespec` | Validate PageSpecV1 contract |
+| `valentino_check_contrast` | WCAG 2.1 contrast ratio (AA/AAA) |
+| `valentino_probe_rhythm` | Section sequence rhythm validation |
+| `valentino_probe_hero` | Hero contract (CTA discipline, copy density) |
+| `valentino_probe_integrity` | Per-type structural validation |
+| `valentino_probe_all` | All probes combined |
+| `valentino_resolve_catalog` | Resolve spec with catalog (blueprints, presets) |
+| `valentino_resolve_route` | Resolve URL route to page ID |
+| `valentino_get_skill` | Get design skill rules |
+| `valentino_list_guardrails` | List 10 Sovereign Guardrails |
 
 ## The 10 Sovereign Guardrails
 
@@ -68,7 +101,7 @@ Any MCP-compatible AI agent can connect to Valentino Engine directly:
 
 ## Contributing
 
-This is an open source project. PRs welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) and link your PR to an ADO Work Item.
+PRs welcome! Please link your PR to an ADO Work Item under [Epic #480](https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_workitems/edit/480).
 
 ## License
 
