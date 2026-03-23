@@ -1,0 +1,93 @@
+# Valentino Engine — Azure Pipelines CI/CD
+# VE-006: Dedicated pipeline with Iron Dome integration
+# Triggers on PRs and pushes to main.
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - '*.md'
+      - 'docs/**'
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  nodeVersion: '20.x'
+
+stages:
+
+  # ─── Stage 1: Build & Typecheck ────────────────────────────────────────────
+  - stage: Build
+    displayName: 'Build & Typecheck'
+    jobs:
+      - job: BuildJob
+        displayName: 'Install, typecheck, build'
+        steps:
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: 'Use Node.js $(nodeVersion)'
+
+          - script: npm ci
+            displayName: 'npm ci'
+
+          - script: npx tsc --noEmit
+            displayName: 'TypeScript typecheck'
+
+          - script: npm run build
+            displayName: 'Build package (tsc)'
+
+  # ─── Stage 2: Test ─────────────────────────────────────────────────────────
+  - stage: Test
+    displayName: 'Unit Tests'
+    dependsOn: Build
+    jobs:
+      - job: TestJob
+        displayName: 'Run vitest'
+        steps:
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: 'npm ci'
+
+          - script: npm test
+            displayName: 'vitest run'
+
+  # ─── Stage 3: CLI Smoke Test ────────────────────────────────────────────────
+  - stage: Smoke
+    displayName: 'CLI Smoke Tests'
+    dependsOn: Build
+    jobs:
+      - job: SmokeJob
+        displayName: 'valentino guardrails smoke'
+        steps:
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - script: npm ci
+            displayName: 'npm ci'
+
+          - script: npm run build
+            displayName: 'Build'
+
+          - script: node dist/bin/valentino.js guardrails
+            displayName: 'CLI: valentino guardrails (smoke)'
+
+          - script: |
+              echo "color: red;" > /tmp/test.css
+              node dist/bin/valentino.js audit /tmp/test.css && exit 1 || echo "Guardrail correctly blocked hardcoded color. ✅"
+            displayName: 'CLI: valentino audit (guardrail enforcement)'
