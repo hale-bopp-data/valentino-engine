@@ -6,7 +6,7 @@
  */
 
 import { readFileSync } from 'fs';
-import { checkNoHardcodedPx, checkNoHardcodedColor } from '../core/guardrails.js';
+import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from '../core/guardrails.js';
 import { validatePageSpec } from '../core/page-spec.js';
 
 const [,, command, ...args] = process.argv;
@@ -21,7 +21,8 @@ switch (command) {
     const css = readFileSync(file, 'utf-8');
     const pxViolations = checkNoHardcodedPx(css);
     const colorViolations = checkNoHardcodedColor(css);
-    const all = [...pxViolations, ...colorViolations];
+    const namedColorViolations = checkNoNamedColor(css);
+    const all = [...pxViolations, ...colorViolations, ...namedColorViolations];
     if (all.length === 0) {
       console.log('✅ No guardrail violations found.');
     } else {
