@@ -6,6 +6,20 @@ describe('probeSectionIntegrity', () => {
         expect(probeSectionIntegrity([]).valid).toBe(true);
     });
 
+    it('warns on hero without titleKey', () => {
+        const result = probeSectionIntegrity([
+            { type: 'hero' },
+        ] as any);
+        expect(result.warnings).toContainEqual(expect.objectContaining({ rule: 'hero-title-required' }));
+    });
+
+    it('passes for valid hero', () => {
+        const result = probeSectionIntegrity([
+            { type: 'hero', titleKey: 'h' },
+        ] as any);
+        expect(result.valid).toBe(true);
+    });
+
     it('passes for valid cards', () => {
         const result = probeSectionIntegrity([
             { type: 'cards', variant: 'catalog', items: [{ titleKey: 't' }] },

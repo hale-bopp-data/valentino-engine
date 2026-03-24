@@ -13,13 +13,21 @@ describe('probeHeroContract', () => {
         expect(result.warnings).toHaveLength(0);
     });
 
-    it('passes with 3 CTAs', () => {
+    it('passes with 2 CTAs', () => {
+        const result = probeHeroContract(makeHero({
+            cta: { labelKey: 'c1', action: { type: 'link', href: '/' } },
+            ctaSecondary: { labelKey: 'c2', action: { type: 'noop' } },
+        }));
+        expect(result.valid).toBe(true);
+    });
+
+    it('warns with 3 CTAs', () => {
         const result = probeHeroContract(makeHero({
             cta: { labelKey: 'c1', action: { type: 'link', href: '/' } },
             ctaSecondary: { labelKey: 'c2', action: { type: 'noop' } },
             ctaTertiary: { labelKey: 'c3', action: { type: 'noop' } },
         }));
-        expect(result.valid).toBe(true);
+        expect(result.warnings).toContainEqual(expect.objectContaining({ rule: 'cta-discipline' }));
     });
 
     it('warns on single-decorative-source violation', () => {

@@ -35,6 +35,12 @@ export function probeSectionIntegrity(sections: SectionSpec[]): IntegrityResult 
 
     sections.forEach((section, index) => {
         switch (section.type) {
+            case 'hero':
+                if (!section.titleKey) {
+                    warnings.push({ index, sectionType: 'hero', rule: 'hero-title-required', message: 'Hero section is missing titleKey.' });
+                }
+                break;
+
             case 'cards':
                 if (!section.items || section.items.length === 0) {
                     warnings.push({ index, sectionType: 'cards', rule: 'cards-items-required', message: 'Cards section has no items.' });
