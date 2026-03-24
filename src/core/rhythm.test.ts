@@ -13,11 +13,11 @@ describe('probeRhythm', () => {
         expect(result.warnings).toHaveLength(0);
     });
 
-    it('returns valid for hero-first sequence', () => {
+    it('returns valid for hero-first sequence with varied surfaces', () => {
         const result = probeRhythm(makeSpec([
-            { type: 'hero', titleKey: 'h' },
-            { type: 'cards', variant: 'catalog', items: [] },
-            { type: 'cta', titleKey: 'c' },
+            { type: 'hero', titleKey: 'h', presentation: { surface: 'shell-dark', rhythmProfile: 'hero' } },
+            { type: 'cards', variant: 'catalog', items: [], presentation: { surface: 'muted', rhythmProfile: 'feature' } },
+            { type: 'cta', titleKey: 'c', presentation: { surface: 'accent', rhythmProfile: 'transition' } },
         ]));
         expect(result.valid).toBe(true);
     });
@@ -57,13 +57,13 @@ describe('probeRhythm', () => {
         expect(result.warnings).toContainEqual(expect.objectContaining({ rule: 'spacer-between-same-surface' }));
     });
 
-    it('does not warn on same default surface', () => {
+    it('warns on same default surface without spacer', () => {
         const result = probeRhythm(makeSpec([
             { type: 'cards', variant: 'catalog', items: [] },
             { type: 'comparison', titleKey: 't', left: { titleKey: 'l', itemsKeys: [] }, right: { titleKey: 'r', itemsKeys: [] } },
         ]));
         const surfaceWarnings = result.warnings.filter(w => w.rule === 'spacer-between-same-surface');
-        expect(surfaceWarnings).toHaveLength(0);
+        expect(surfaceWarnings).toHaveLength(1);
     });
 
     it('does not warn when spacer separates same surface', () => {

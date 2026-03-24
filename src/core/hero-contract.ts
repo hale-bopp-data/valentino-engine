@@ -29,10 +29,10 @@ export function probeHeroContract(hero: HeroSection): HeroContractResult {
     if (hero.cta) ctaCount++;
     if (hero.ctaSecondary) ctaCount++;
     if (hero.ctaTertiary) ctaCount++;
-    if (ctaCount > 3) {
+    if (ctaCount > 2) {
         warnings.push({
             rule: 'cta-discipline',
-            message: `Hero has ${ctaCount} CTAs — maximum is 3.`,
+            message: `Hero has ${ctaCount} CTAs — maximum recommended is 2 (primary + secondary).`,
         });
     }
 
