@@ -403,6 +403,15 @@ export type AdvisorSection = SectionPresentationBase & {
     prompts: AdvisorPromptSpec[];
 };
 
+export type MermaidDiagramSection = SectionPresentationBase & {
+    type: 'mermaid-diagram';
+    layoutMap?: LayoutMapSpec;
+    titleKey?: string;
+    descKey?: string;
+    mermaidCode: string;
+    height?: 'auto' | 'sm' | 'md' | 'lg';
+};
+
 export type ValentinoCatalogSection = SectionPresentationBase & {
     type: 'valentino-catalog';
     titleKey: string;
@@ -427,6 +436,7 @@ export type SectionSpec =
     | StatsSection
     | HowItWorksSection
     | AdvisorSection
+    | MermaidDiagramSection
     | ValentinoCatalogSection;
 
 export type PageProfileSpec =

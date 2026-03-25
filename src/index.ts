@@ -22,6 +22,7 @@ export type {
     StatItemSpec, StatsSection,
     HowItWorksStepSpec, HowItWorksSection,
     AdvisorPromptSpec, AdvisorResponseStatus, AdvisorResponseLabelsSpec, AdvisorSection,
+    MermaidDiagramSection,
     ValentinoCatalogSection,
     SectionSpec, PageProfileSpec, PageSpecV1,
     ValentinoGovernanceTier, ValentinoGovernanceSpec,

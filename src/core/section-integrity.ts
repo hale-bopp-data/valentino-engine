@@ -91,6 +91,12 @@ export function probeSectionIntegrity(sections: SectionSpec[]): IntegrityResult 
                     warnings.push({ index, sectionType: 'action-form', rule: 'action-form-fields-required', message: 'Action-form section has no fields.' });
                 }
                 break;
+
+            case 'mermaid-diagram':
+                if (!section.mermaidCode || section.mermaidCode.trim().length === 0) {
+                    warnings.push({ index, sectionType: 'mermaid-diagram', rule: 'mermaid-code-required', message: 'Mermaid-diagram section has no mermaidCode.' });
+                }
+                break;
         }
     });
 
