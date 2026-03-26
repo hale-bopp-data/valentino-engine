@@ -508,6 +508,12 @@ export type ManifestPageV1 = {
     titleKey?: string;
     spec: string;
     nav?: { labelKey: string; order: number };
+    /** Page lifecycle status (CMS workflow, PBI #595) */
+    status?: 'draft' | 'published';
+    /** ISO 8601 timestamp for scheduled publishing (PBI #596) */
+    publishAt?: string;
+    /** Page-level SEO metadata (PBI #598) */
+    seo?: import('./seo.js').SeoSpec;
 };
 
 export type NavInteractionModeV1 = 'hover' | 'click';
