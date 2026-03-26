@@ -61,7 +61,7 @@ export function checkPublishAtCoherence(manifest: PagesManifestV1): CmsWarning[]
 
 /** Warn if maintenanceMode is active. */
 export function checkMaintenanceModeLeak(manifest: PagesManifestV1): CmsWarning[] {
-    if ((manifest as any).maintenanceMode === true) {
+    if (manifest.maintenanceMode === true) {
         return [{
             type: 'cms-maintenance-mode-active',
             severity: 'warning',
