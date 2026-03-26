@@ -13,6 +13,7 @@ import { runManifestResolve } from './commands/manifest.js';
 import { runContrast } from './commands/contrast.js';
 import { runInit } from './commands/init.js';
 import { runLlms } from './commands/llms.js';
+import { runLighthouse } from './commands/lighthouse.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -61,6 +62,10 @@ switch (command) {
         runLlms(args);
         break;
 
+    case 'lighthouse':
+        runLighthouse(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
@@ -75,6 +80,7 @@ Usage:
   valentino catalog resolve <spec.json> --catalog <catalog.json> Resolve spec with catalog
   valentino manifest resolve <manifest.json> --route /path      Resolve route to page ID
   valentino llms <manifest.json> [--content c.json] [--site N]  Generate llms.txt + llms-full.txt
+  valentino lighthouse [--target URL] [--threshold N] [--json]  Run Lighthouse performance audit
 
 Epic: https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_workitems/edit/480
 `);
