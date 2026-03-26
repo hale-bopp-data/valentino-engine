@@ -102,10 +102,6 @@ export { probeAnimations, resolveAnimationCSS, ANIMATION_PRESETS } from './core/
 export type { AnimationWarning } from './core/animation.js';
 export type { AnimationPreset, AnimationDelay, AnimationTrigger, AnimationSpec } from './core/types.js';
 
-// Lighthouse audit (PBI #623)
-export { lighthouse } from './bin/commands/lighthouse.js';
-export type { LighthouseOptions, CheckResult } from './bin/commands/lighthouse.js';
-
 // Extension Registry (PBI #606)
 export {
     createExtensionRegistry,
