@@ -36,9 +36,7 @@
     "mcp": "tsx src/mcp/index.ts",
     "audit": "tsx src/bin/valentino.ts audit",
     "probe": "tsx src/bin/valentino.ts probe",
-    "contrast": "tsx src/bin/valentino.ts contrast",
-    "lighthouse": "tsx src/bin/valentino.ts lighthouse",
-    "lighthouse:prod": "tsx src/bin/valentino.ts lighthouse --target http://80.225.86.168"
+    "contrast": "tsx src/bin/valentino.ts contrast"
   },
   "keywords": [
     "ui",
