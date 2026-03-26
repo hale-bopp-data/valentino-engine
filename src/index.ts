@@ -62,3 +62,19 @@ export type { IntegrityWarning, IntegrityResult } from './core/section-integrity
 
 // Skills
 export { premiumDesignSkill, webGuardrailsSkill, designGuidelinesSkill } from './skills/index.js';
+
+// CMS — Page status workflow (PBI #606)
+export { getPageStatus, getPublishAt, isPageVisible } from './core/page-status.js';
+export type { PageStatus } from './core/page-status.js';
+
+// CMS — Redirects (PBI #606)
+export { findRedirect } from './core/redirects.js';
+export type { RedirectRule, RedirectsConfig } from './core/redirects.js';
+
+// CMS — Media resolver (PBI #606)
+export { resolveMediaUrl, resolveMediaAsset } from './core/media.js';
+export type { MediaAsset, MediaManifest } from './core/media.js';
+
+// CMS — SEO types + Schema.org builder (PBI #606)
+export { buildWebPageSchema } from './core/seo.js';
+export type { SeoSpec } from './core/seo.js';
