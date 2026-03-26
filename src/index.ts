@@ -89,6 +89,10 @@ export {
 } from './core/guardrails-cms.js';
 export type { CmsWarning } from './core/guardrails-cms.js';
 
+// LLMs.txt generator (PBI #614)
+export { generateLlmsTxt, generateLlmsFullTxt } from './core/llms-generator.js';
+export type { LlmsGeneratorOptions } from './core/llms-generator.js';
+
 // Extension Registry (PBI #606)
 export {
     createExtensionRegistry,
