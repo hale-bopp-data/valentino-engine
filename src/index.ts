@@ -79,10 +79,13 @@ export type { MediaAsset, MediaManifest } from './core/media.js';
 export { buildWebPageSchema } from './core/seo.js';
 export type { SeoSpec } from './core/seo.js';
 
-// CMS — Guardrails pure rules (PBI #606)
+// CMS — Guardrails pure rules (PBI #606, extended PBI #605)
 export {
     checkDraftOrphans, checkPublishAtCoherence, checkMaintenanceModeLeak,
-    check404Exists, checkRedirects, checkSeoCompleteness, collectPureCmsWarnings,
+    check404Exists, checkRedirects, checkSeoCompleteness,
+    checkOgImageExists, checkMediaOrphans, checkMediaMissingAlt,
+    checkBreadcrumbDepth, checkLanguageCoverage, checkDuplicateRoutes,
+    collectPureCmsWarnings,
 } from './core/guardrails-cms.js';
 export type { CmsWarning } from './core/guardrails-cms.js';
 
