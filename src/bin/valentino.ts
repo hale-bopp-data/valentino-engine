@@ -11,10 +11,15 @@ import { runProbe } from './commands/probe.js';
 import { runCatalogResolve } from './commands/catalog.js';
 import { runManifestResolve } from './commands/manifest.js';
 import { runContrast } from './commands/contrast.js';
+import { runInit } from './commands/init.js';
 
 const [,, command, ...args] = process.argv;
 
 switch (command) {
+    case 'init':
+        runInit(args);
+        break;
+
     case 'audit':
         runAudit(args);
         break;
@@ -56,6 +61,7 @@ switch (command) {
 🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
 
 Usage:
+  valentino init [name] [--template id] [--lang code] [--git url]  Create a new project
   valentino audit <file.css>                                    Audit CSS for guardrail violations
   valentino validate <spec.json>                                Validate a Runtime PageSpec JSON (V1)
   valentino guardrails                                          List all 10 Sovereign Guardrails
