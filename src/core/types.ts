@@ -460,6 +460,8 @@ export type PageSpecV1 = {
     chrome?: {
         floatingDock?: boolean;
     };
+    /** Page-level SEO metadata (PBI #598) */
+    seo?: import('./seo.js').SeoSpec;
     sections: SectionSpec[];
 };
 
@@ -568,6 +570,8 @@ export type NavigationConfigV1 = {
 export type PagesManifestV1 = {
     version: '1';
     defaultLanguage?: string;
+    /** When true, all pages show maintenance screen in production (PBI #603) */
+    maintenanceMode?: boolean;
     navigation?: NavigationConfigV1;
     pages: ManifestPageV1[];
 };
