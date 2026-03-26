@@ -93,6 +93,11 @@ export type { CmsWarning } from './core/guardrails-cms.js';
 export { generateLlmsTxt, generateLlmsFullTxt } from './core/llms-generator.js';
 export type { LlmsGeneratorOptions } from './core/llms-generator.js';
 
+// Animation presets (PBI #611)
+export { probeAnimations, resolveAnimationCSS, ANIMATION_PRESETS } from './core/animation.js';
+export type { AnimationWarning } from './core/animation.js';
+export type { AnimationPreset, AnimationDelay, AnimationTrigger, AnimationSpec } from './core/types.js';
+
 // Extension Registry (PBI #606)
 export {
     createExtensionRegistry,

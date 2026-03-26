@@ -49,8 +49,21 @@ export type SectionPresentationSpec = {
     transitionProfileId?: string;
 };
 
+export type AnimationPreset = 'fade-up' | 'fade-in' | 'slide-left' | 'slide-right' | 'scale-in' | 'none';
+export type AnimationDelay = 'none' | 'stagger';
+export type AnimationTrigger = 'viewport' | 'immediate';
+
+export type AnimationSpec = {
+    entrance?: AnimationPreset;
+    delay?: AnimationDelay;
+    trigger?: AnimationTrigger;
+    /** Duration in ms (default 400) */
+    duration?: number;
+};
+
 export type SectionPresentationBase = {
     presentation?: SectionPresentationSpec;
+    animation?: AnimationSpec;
 };
 
 export type LayoutMapMeasureToken = 'compact' | 'reading' | 'wide' | 'full';
