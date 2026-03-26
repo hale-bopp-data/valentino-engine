@@ -78,3 +78,22 @@ export type { MediaAsset, MediaManifest } from './core/media.js';
 // CMS — SEO types + Schema.org builder (PBI #606)
 export { buildWebPageSchema } from './core/seo.js';
 export type { SeoSpec } from './core/seo.js';
+
+// CMS — Guardrails pure rules (PBI #606)
+export {
+    checkDraftOrphans, checkPublishAtCoherence, checkMaintenanceModeLeak,
+    check404Exists, checkRedirects, checkSeoCompleteness, collectPureCmsWarnings,
+} from './core/guardrails-cms.js';
+export type { CmsWarning } from './core/guardrails-cms.js';
+
+// Extension Registry (PBI #606)
+export {
+    createExtensionRegistry,
+    registerSectionRenderer, registerGuardrail, registerCustomStatus,
+    setContentResolver, setMediaResolver, registerEditorPanel,
+    hasCustomRenderer, getCustomRenderer, runCustomGuardrails, getEditorPanels,
+} from './core/extension-registry.js';
+export type {
+    ExtensionRegistry, CustomSectionRenderer, CustomGuardrail, GuardrailContext,
+    ContentResolver, MediaResolver, EditorPanelDef,
+} from './core/extension-registry.js';
