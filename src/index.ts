@@ -89,6 +89,10 @@ export {
 } from './core/guardrails-cms.js';
 export type { CmsWarning } from './core/guardrails-cms.js';
 
+// Encoding guardrail — mojibake + typography (PBI #629)
+export { checkMojibake, checkTypography, checkEncoding, MOJIBAKE_PATTERN_COUNT, TYPO_RULE_COUNT } from './core/encoding.js';
+export type { EncodingWarning } from './core/encoding.js';
+
 // LLMs.txt generator (PBI #614)
 export { generateLlmsTxt, generateLlmsFullTxt } from './core/llms-generator.js';
 export type { LlmsGeneratorOptions } from './core/llms-generator.js';
