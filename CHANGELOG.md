@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.0] — 2026-03-26
+
+### Added
+- **CMS Guardrails (PBI #605)**: 6 new checks — `checkOgImageExists`, `checkMediaOrphans`, `checkMediaMissingAlt`, `checkBreadcrumbDepth`, `checkLanguageCoverage`, `checkDuplicateRoutes` (12/14 total)
+- **LLMs.txt Generator (PBI #614)**: `generateLlmsTxt` (L0 compact) + `generateLlmsFullTxt` (L1 detailed) + CLI `valentino llms`
+- **Animation Presets (PBI #611)**: `AnimationSpec` on `SectionPresentationBase`, 5 presets (fade-up/in, slide-left/right, scale-in), `probeAnimations` validation, `resolveAnimationCSS` for consumers
+- **Encoding Guardrail (PBI #629)**: `checkMojibake` (14 Latin-1/Win-1252 patterns), `checkTypography` (15+ rules for IT/EN/FR/DE/ES), `checkEncoding` combined
+
+### Changed
+- CLI now has 10 commands (was 9): added `llms`
+- Test suite: 239 tests across 16 suites (was 170/13)
+- Core modules: 17 (was 14)
+- `collectPureCmsWarnings` accepts new options: `mediaManifest`, `contentByLang`
+
 ## [2.0.0] — 2026-03-26
 
 ### Breaking Changes
