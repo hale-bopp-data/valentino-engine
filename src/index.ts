@@ -102,6 +102,16 @@ export { probeAnimations, resolveAnimationCSS, ANIMATION_PRESETS } from './core/
 export type { AnimationWarning } from './core/animation.js';
 export type { AnimationPreset, AnimationDelay, AnimationTrigger, AnimationSpec } from './core/types.js';
 
+// Editor utilities (PBI #602)
+export {
+    getEditableSectionTypes, generateEditorSchema, generateAllEditorSchemas,
+    applySectionPatch, addSection, removeSection, moveSection, applyPagePatch,
+} from './core/editor.js';
+export type {
+    EditorFieldType, EditorFieldSpec, EditorSectionSchema,
+    SectionPatchWarning, SectionPatchResult,
+} from './core/editor.js';
+
 // Extension Registry (PBI #606)
 export {
     createExtensionRegistry,
