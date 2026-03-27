@@ -14,15 +14,20 @@
 | DOM (applyPageSeo, applySchemaOrg, renderBreadcrumb) | **portal** | Resta nel consumer |
 | Schema JSON (manifest, page spec) | **portal** | Allineati con tipi engine |
 
-## Checklist import (verificata)
+## Checklist import (verificata — aggiornata #634)
 
-| File portal | Import da engine | Cast (as any) rimossi |
+| File portal | Import da engine | Note |
 |---|---|---|
-| `types/runtime-pages.ts` | 34 tipi re-esportati | 0 |
-| `utils/runtime-pages.ts` | 8 funzioni + 6 tipi | 3 cast rimossi (#630) |
-| `utils/pages-loader.ts` | normalizePathname, resolvePageIdByRoute | 0 |
-| `utils/pages-renderer.ts` | DEFAULT_PRESENTATION, inferRhythmProfile, resolvePresentation | 0 |
-| `utils/valentino-catalog.ts` | mergePresentation, isGovernanceAllowed, resolvePageSpecWithCatalog | 0 |
+| `types/runtime-pages.ts` | Solo `AdvisorResponseStatus` | 2 tipi portal-only restano qui |
+| `utils/runtime-pages.ts` | 8 funzioni + 6 tipi diretti da engine | CMS logic completa |
+| `utils/pages-loader.ts` | normalizePathname, resolvePageIdByRoute | Re-export |
+| `utils/pages-renderer.ts` | 18 tipi + DEFAULT_PRESENTATION, inferRhythmProfile, resolvePresentation | Advisor types restano locali |
+| `utils/valentino-catalog.ts` | mergePresentation, isGovernanceAllowed, resolvePageSpecWithCatalog | Re-export |
+| `editor/editor-app.ts` | 7 funzioni + 5 tipi da engine (#602) | Editor utilities |
+| `components/sovereign-header.ts` | Nav types da engine | Diretto |
+| `stories/hero.stories.ts` | HeroSection type | Diretto |
+| `utils/mermaid-renderer.ts` | MermaidDiagramSection type | Diretto |
+| `utils/theme-packs-loader.ts` | PageSpecV1 type | Diretto |
 
 ## Breaking changes per consumer esterni
 
@@ -49,7 +54,7 @@ Se qualcosa si rompe dopo il decommissioning:
 1. ~~Completare migrazione logica pura (#606)~~ DONE
 2. ~~Allineare schema JSON (#630)~~ DONE
 3. ~~Rimuovere cast (as any) (#630)~~ DONE
-4. Pubblicare engine su npm come `@hale-bopp/valentino-engine@2.0.0`
-5. Portal: cambiare da `file:` a `npm:` dependency
-6. Rimuovere facade re-export in `types/runtime-pages.ts` (import diretto dall'engine)
+4. ~~Pubblicare engine su npm come `@hale-bopp/valentino-engine@2.1.0`~~ DONE
+5. ~~Portal: switch a `@hale-bopp/valentino-engine@^2.1.0` (#634)~~ DONE — import diretti, facade rimosso, `types/runtime-pages.ts` ridotto a 2 tipi portal-only
+6. ~~Rimuovere facade re-export in `types/runtime-pages.ts`~~ DONE — file contiene solo `AdvisorRequestPayload` e `AdvisorResponsePayload`
 7. Portal: eliminare CMS guardrails I/O wrapper duplicati (usare engine + custom I/O via extension registry)
