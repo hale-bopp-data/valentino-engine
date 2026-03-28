@@ -1,0 +1,40 @@
+{
+  "version": "1",
+  "id": "about",
+  "sections": [
+    {
+      "type": "hero",
+      "presentation": {
+        "surface": "muted",
+        "height": "screen-sm"
+      },
+      "titleKey": "About This Site",
+      "taglineKey": "A proof-of-concept: valentino-engine works without EasyWay."
+    },
+    {
+      "type": "how-it-works",
+      "presentation": {
+        "surface": "default"
+      },
+      "titleKey": "How it works",
+      "steps": [
+        {
+          "titleKey": "1. Install",
+          "descriptionKey": "npm install @hale-bopp/valentino-engine"
+        },
+        {
+          "titleKey": "2. Write JSON",
+          "descriptionKey": "Create page specs in pages/*.json following the PageSpecV1 schema."
+        },
+        {
+          "titleKey": "3. Validate",
+          "descriptionKey": "Run npx valentino validate to check guardrails, contrast, rhythm."
+        },
+        {
+          "titleKey": "4. Render",
+          "descriptionKey": "Use the engine API to resolve specs into your rendering framework."
+        }
+      ]
+    }
+  ]
+}
