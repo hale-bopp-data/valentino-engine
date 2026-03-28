@@ -112,6 +112,16 @@ export type {
     SectionPatchWarning, SectionPatchResult,
 } from './core/editor.js';
 
+// AI Page Generator (PBI #608)
+export { parsePrompt, generatePageSpec, generatePageSpecLocal } from './core/page-generator.js';
+export type {
+    PageIntent, SectionIntent, GeneratePageOptions, LlmContext, GeneratePageResult,
+} from './core/page-generator.js';
+
+// Template Gallery (PBI #610)
+export { listCatalogEntries, listPageEntries, listAllGalleryEntries, filterGalleryEntries } from './core/gallery.js';
+export type { GalleryEntryKind, GalleryEntry, GalleryFilter } from './core/gallery.js';
+
 // Extension Registry (PBI #606)
 export {
     createExtensionRegistry,
