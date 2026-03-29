@@ -122,6 +122,25 @@ export type {
 export { listCatalogEntries, listPageEntries, listAllGalleryEntries, filterGalleryEntries } from './core/gallery.js';
 export type { GalleryEntryKind, GalleryEntry, GalleryFilter } from './core/gallery.js';
 
+// Cockpit API — Conversational Cockpit (Feature #778, PBI #779)
+export {
+    executeCockpitAction, executeCockpitBatch,
+    validateCockpitAction, describeCockpitAction,
+    COCKPIT_SECTION_TYPES,
+} from './core/cockpit-api.js';
+export type {
+    CockpitAction, CockpitActionAddSection, CockpitActionEditSection,
+    CockpitActionRemoveSection, CockpitActionMoveSection, CockpitActionEditPage,
+    CockpitActionQuery, CockpitQuery, CockpitWarning, CockpitActionResult,
+    CockpitBatchResult,
+} from './core/cockpit-api.js';
+
+// Schema Export — JSON Schema for external consumers (Feature #778, PBI #779)
+export {
+    getPageSpecSchema, getCockpitActionSchema,
+    getSectionSchema, getAllSectionSchemas, getSchemaDefinedSectionTypes,
+} from './core/schema-export.js';
+
 // Extension Registry (PBI #606)
 export {
     createExtensionRegistry,
