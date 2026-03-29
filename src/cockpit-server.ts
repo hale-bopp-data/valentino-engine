@@ -28,6 +28,8 @@ import { getPageSpecSchema, getCockpitActionSchema, getAllSectionSchemas } from 
 import { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
 import type { OpenRouterConfig } from './core/openrouter-client.js';
 import { importFromImage, createVisionCallback } from './core/visual-import.js';
+import { importFromUrl } from './core/url-import.js';
+import type { HtmlLlmCallback } from './core/url-import.js';
 
 // ---------------------------------------------------------------------------
 // Server state
@@ -292,6 +294,79 @@ function handleApi(req: IncomingMessage, res: ServerResponse, state: ServerState
 
             if (result.success && result.spec) {
                 // Replace current spec with imported one
+                state.history.push(structuredClone(state.spec));
+                state.spec = result.spec;
+                state.actionCount++;
+            }
+
+            json(res, {
+                ...result,
+                actionCount: state.actionCount,
+                undoAvailable: state.history.length,
+            });
+        }).catch(() => json(res, { error: 'Invalid JSON body' }, 400));
+        return;
+    }
+
+    // POST /api/import/url — import from URL
+    if (path === '/api/import/url' && req.method === 'POST') {
+        readBody(req).then(async body => {
+            const { url: targetUrl, id, language, forceHtmlFallback } = JSON.parse(body);
+            if (!targetUrl) {
+                json(res, { error: 'Missing "url" field' }, 400);
+                return;
+            }
+
+            const visionKey = process.env.OPENROUTER_API_KEY;
+            if (!visionKey) {
+                json(res, {
+                    success: false,
+                    error: 'URL import requires OPENROUTER_API_KEY env var or Settings config.',
+                }, 400);
+                return;
+            }
+
+            const visionModel = process.env.OPENROUTER_VISION_MODEL || 'anthropic/claude-sonnet-4-6';
+            const visionLlm = createVisionCallback(visionKey, visionModel);
+
+            // HTML fallback LLM — uses text model (cheaper)
+            const textModel = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5-20251001';
+            const htmlLlm: HtmlLlmCallback = async (systemPrompt, userPrompt) => {
+                const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${visionKey}`,
+                        'HTTP-Referer': 'https://valentino-engine.dev',
+                    },
+                    body: JSON.stringify({
+                        model: textModel,
+                        max_tokens: 4096,
+                        temperature: 0.1,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt },
+                        ],
+                    }),
+                });
+                const data = await resp.json() as any;
+                return data.choices?.[0]?.message?.content || '';
+            };
+
+            const pageId = id || new URL(targetUrl).hostname.replace(/\./g, '-');
+
+            const result = await importFromUrl(
+                targetUrl,
+                visionLlm,
+                htmlLlm,
+                {
+                    id: pageId,
+                    language: language || 'it',
+                    forceHtmlFallback: forceHtmlFallback ?? true, // default to HTML since Playwright likely not installed
+                },
+            );
+
+            if (result.success && result.spec) {
                 state.history.push(structuredClone(state.spec));
                 state.spec = result.spec;
                 state.actionCount++;

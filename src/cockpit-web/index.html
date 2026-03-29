@@ -348,13 +348,27 @@
 <div class="overlay" id="importOverlay">
   <div class="settings-panel">
     <h2>VISUAL IMPORT — Il Sarto Copia</h2>
-    <div class="llm-status disconnected" id="importInfo">Carica uno screenshot e Valentino lo trasforma in una pagina governata.</div>
-    <div class="field">
-      <label>Screenshot</label>
-      <input type="file" id="importFile" accept="image/png,image/jpeg,image/webp" style="padding:6px">
+    <div class="llm-status disconnected" id="importInfo">Carica uno screenshot o inserisci un URL.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn primary" id="tabScreenshot" style="flex:1">Screenshot</button>
+      <button class="btn" id="tabUrl" style="flex:1">URL</button>
     </div>
-    <div class="field" id="importPreviewWrap" style="display:none">
-      <img id="importPreview" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border)">
+    <!-- Screenshot tab -->
+    <div id="importTabScreenshot">
+      <div class="field">
+        <label>Screenshot</label>
+        <input type="file" id="importFile" accept="image/png,image/jpeg,image/webp" style="padding:6px">
+      </div>
+      <div class="field" id="importPreviewWrap" style="display:none">
+        <img id="importPreview" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border)">
+      </div>
+    </div>
+    <!-- URL tab -->
+    <div id="importTabUrl" style="display:none">
+      <div class="field">
+        <label>URL della pagina</label>
+        <input type="text" id="importUrl" placeholder="https://example.com">
+      </div>
     </div>
     <div class="field">
       <label>Page ID</label>
@@ -595,6 +609,42 @@ const importInfo = document.getElementById('importInfo');
 
 let importBase64 = null;
 let importMime = null;
+let importMode = 'screenshot';
+
+const tabScreenshot = document.getElementById('tabScreenshot');
+const tabUrl = document.getElementById('tabUrl');
+const importTabScreenshot = document.getElementById('importTabScreenshot');
+const importTabUrl = document.getElementById('importTabUrl');
+const importUrlInput = document.getElementById('importUrl');
+
+tabScreenshot.addEventListener('click', () => {
+  importMode = 'screenshot';
+  tabScreenshot.className = 'btn primary';
+  tabUrl.className = 'btn';
+  importTabScreenshot.style.display = '';
+  importTabUrl.style.display = 'none';
+  importGo.disabled = !importBase64;
+});
+
+tabUrl.addEventListener('click', () => {
+  importMode = 'url';
+  tabUrl.className = 'btn primary';
+  tabScreenshot.className = 'btn';
+  importTabUrl.style.display = '';
+  importTabScreenshot.style.display = 'none';
+  importGo.disabled = !importUrlInput.value.trim();
+});
+
+importUrlInput?.addEventListener('input', () => {
+  if (importMode === 'url') {
+    importGo.disabled = !importUrlInput.value.trim();
+    // Auto-generate ID from URL hostname
+    try {
+      const hostname = new URL(importUrlInput.value).hostname;
+      if (!importId.value) importId.value = hostname.replace(/\./g, '-');
+    } catch {}
+  }
+});
 
 btnImport.addEventListener('click', () => {
   importOverlay.classList.add('open');
@@ -602,8 +652,13 @@ btnImport.addEventListener('click', () => {
   importPreviewWrap.style.display = 'none';
   importGo.disabled = true;
   importBase64 = null;
+  importMode = 'screenshot';
+  tabScreenshot.className = 'btn primary';
+  tabUrl.className = 'btn';
+  importTabScreenshot.style.display = '';
+  importTabUrl.style.display = 'none';
   importInfo.className = 'llm-status disconnected';
-  importInfo.textContent = 'Carica uno screenshot e Valentino lo trasforma in una pagina governata.';
+  importInfo.textContent = 'Carica uno screenshot o inserisci un URL.';
 });
 
 importCancel.addEventListener('click', () => {
@@ -637,26 +692,37 @@ importFile.addEventListener('change', (e) => {
 });
 
 importGo.addEventListener('click', async () => {
-  if (!importBase64) return;
-
   importGo.disabled = true;
   importGo.textContent = 'Analyzing...';
   importInfo.className = 'llm-status disconnected';
-  importInfo.textContent = 'Analyzing screenshot with LLM vision...';
 
+  let result;
   try {
-    const result = await apiPost('/api/import/image', {
-      image: importBase64,
-      mimeType: importMime,
-      id: importId.value || 'imported-page',
-      language: importLang.value,
-    });
+    if (importMode === 'url') {
+      importInfo.textContent = 'Fetching and analyzing URL...';
+      result = await apiPost('/api/import/url', {
+        url: importUrlInput.value.trim(),
+        id: importId.value || 'imported-page',
+        language: importLang.value,
+      });
+    } else {
+      if (!importBase64) return;
+      importInfo.textContent = 'Analyzing screenshot with LLM vision...';
+      result = await apiPost('/api/import/image', {
+        image: importBase64,
+        mimeType: importMime,
+        id: importId.value || 'imported-page',
+        language: importLang.value,
+      });
+    }
 
     if (result.success) {
       importInfo.className = 'llm-status connected';
-      importInfo.textContent = `Imported! ${result.detectedSections?.length || 0} sections detected.`;
+      const modeLabel = result.mode === 'playwright' ? 'Screenshot' : result.mode === 'html-fallback' ? 'HTML' : 'Image';
+      importInfo.textContent = `Imported (${modeLabel})! ${result.detectedSections?.length || 0} sections detected.`;
       addMessage(
-        `<div class="description">Visual Import: ${result.detectedSections?.join(', ')}</div>` +
+        `<div class="description">Import ${modeLabel}: ${result.detectedSections?.join(', ')}</div>` +
+        (result.pageTitle ? `<div class="confidence">Page: ${result.pageTitle}</div>` : '') +
         (result.warnings?.length ? '<div class="warnings">' + result.warnings.join('<br>') + '</div>' : ''),
         'system', 'success'
       );
