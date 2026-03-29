@@ -30,6 +30,8 @@ import type { OpenRouterConfig } from './core/openrouter-client.js';
 import { importFromImage, createVisionCallback } from './core/visual-import.js';
 import { importFromUrl } from './core/url-import.js';
 import type { HtmlLlmCallback } from './core/url-import.js';
+import { importFromVideo } from './core/video-import.js';
+import type { FrameData } from './core/video-import.js';
 
 // ---------------------------------------------------------------------------
 // Server state
@@ -365,6 +367,49 @@ function handleApi(req: IncomingMessage, res: ServerResponse, state: ServerState
                     forceHtmlFallback: forceHtmlFallback ?? true, // default to HTML since Playwright likely not installed
                 },
             );
+
+            if (result.success && result.spec) {
+                state.history.push(structuredClone(state.spec));
+                state.spec = result.spec;
+                state.actionCount++;
+            }
+
+            json(res, {
+                ...result,
+                actionCount: state.actionCount,
+                undoAvailable: state.history.length,
+            });
+        }).catch(() => json(res, { error: 'Invalid JSON body' }, 400));
+        return;
+    }
+
+    // POST /api/import/video — import from video frames
+    if (path === '/api/import/video' && req.method === 'POST') {
+        readBody(req).then(async body => {
+            const { frames, id, language } = JSON.parse(body) as {
+                frames: FrameData[];
+                id?: string;
+                language?: string;
+            };
+
+            if (!frames || !Array.isArray(frames) || frames.length === 0) {
+                json(res, { error: 'Missing "frames" array' }, 400);
+                return;
+            }
+
+            const visionKey = process.env.OPENROUTER_API_KEY;
+            if (!visionKey) {
+                json(res, { success: false, error: 'Video import requires OPENROUTER_API_KEY.' }, 400);
+                return;
+            }
+
+            const visionModel = process.env.OPENROUTER_VISION_MODEL || 'anthropic/claude-sonnet-4-6';
+            const visionLlm = createVisionCallback(visionKey, visionModel);
+
+            const result = await importFromVideo(frames, visionLlm, {
+                id: id || `video-${Date.now()}`,
+                language: language || 'it',
+            });
 
             if (result.success && result.spec) {
                 state.history.push(structuredClone(state.spec));
