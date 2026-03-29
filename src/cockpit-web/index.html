@@ -352,6 +352,7 @@
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <button class="btn primary" id="tabScreenshot" style="flex:1">Screenshot</button>
       <button class="btn" id="tabUrl" style="flex:1">URL</button>
+      <button class="btn" id="tabVideo" style="flex:1">Video</button>
     </div>
     <!-- Screenshot tab -->
     <div id="importTabScreenshot">
@@ -368,6 +369,17 @@
       <div class="field">
         <label>URL della pagina</label>
         <input type="text" id="importUrl" placeholder="https://example.com">
+      </div>
+    </div>
+    <!-- Video tab -->
+    <div id="importTabVideo" style="display:none">
+      <div class="field">
+        <label>Video</label>
+        <input type="file" id="importVideoFile" accept="video/mp4,video/webm,video/mov" style="padding:6px">
+      </div>
+      <div class="field" id="videoFramesWrap" style="display:none">
+        <label>Frames estratti (<span id="frameCountLabel">0</span>)</label>
+        <div id="videoFrames" style="display:flex;gap:4px;overflow-x:auto;padding:4px 0"></div>
       </div>
     </div>
     <div class="field">
@@ -613,27 +625,36 @@ let importMode = 'screenshot';
 
 const tabScreenshot = document.getElementById('tabScreenshot');
 const tabUrl = document.getElementById('tabUrl');
+const tabVideo = document.getElementById('tabVideo');
 const importTabScreenshot = document.getElementById('importTabScreenshot');
 const importTabUrl = document.getElementById('importTabUrl');
+const importTabVideo = document.getElementById('importTabVideo');
 const importUrlInput = document.getElementById('importUrl');
+const importVideoFile = document.getElementById('importVideoFile');
+const videoFramesWrap = document.getElementById('videoFramesWrap');
+const videoFramesEl = document.getElementById('videoFrames');
+const frameCountLabel = document.getElementById('frameCountLabel');
 
-tabScreenshot.addEventListener('click', () => {
-  importMode = 'screenshot';
-  tabScreenshot.className = 'btn primary';
-  tabUrl.className = 'btn';
-  importTabScreenshot.style.display = '';
-  importTabUrl.style.display = 'none';
-  importGo.disabled = !importBase64;
-});
+let videoFrames = []; // { base64, mimeType, timestamp }
 
-tabUrl.addEventListener('click', () => {
-  importMode = 'url';
-  tabUrl.className = 'btn primary';
-  tabScreenshot.className = 'btn';
-  importTabUrl.style.display = '';
-  importTabScreenshot.style.display = 'none';
-  importGo.disabled = !importUrlInput.value.trim();
-});
+function setImportTab(mode) {
+  importMode = mode;
+  const tabs = { screenshot: tabScreenshot, url: tabUrl, video: tabVideo };
+  const panels = { screenshot: importTabScreenshot, url: importTabUrl, video: importTabVideo };
+  for (const [k, btn] of Object.entries(tabs)) {
+    btn.className = k === mode ? 'btn primary' : 'btn';
+  }
+  for (const [k, panel] of Object.entries(panels)) {
+    panel.style.display = k === mode ? '' : 'none';
+  }
+  if (mode === 'screenshot') importGo.disabled = !importBase64;
+  else if (mode === 'url') importGo.disabled = !importUrlInput.value.trim();
+  else if (mode === 'video') importGo.disabled = videoFrames.length === 0;
+}
+
+tabScreenshot.addEventListener('click', () => setImportTab('screenshot'));
+tabUrl.addEventListener('click', () => setImportTab('url'));
+tabVideo.addEventListener('click', () => setImportTab('video'));
 
 importUrlInput?.addEventListener('input', () => {
   if (importMode === 'url') {
@@ -646,19 +667,70 @@ importUrlInput?.addEventListener('input', () => {
   }
 });
 
+// Video frame extraction (browser-side)
+importVideoFile?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  videoFrames = [];
+  videoFramesEl.innerHTML = '';
+  videoFramesWrap.style.display = 'none';
+  importInfo.textContent = 'Extracting frames...';
+
+  const url = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.src = url;
+  video.muted = true;
+  video.preload = 'auto';
+
+  await new Promise((resolve) => { video.onloadedmetadata = resolve; });
+  const duration = video.duration;
+  const numFrames = Math.min(5, Math.max(2, Math.floor(duration / 3)));
+  const interval = duration / (numFrames + 1);
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 1440;
+  canvas.height = 900;
+
+  for (let i = 1; i <= numFrames; i++) {
+    const time = interval * i;
+    video.currentTime = time;
+    await new Promise((resolve) => { video.onseeked = resolve; });
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    const base64 = dataUrl.split(',')[1];
+    videoFrames.push({ base64, mimeType: 'image/jpeg', timestamp: Math.round(time) });
+
+    // Show thumbnail
+    const thumb = document.createElement('img');
+    thumb.src = dataUrl;
+    thumb.style.cssText = 'height:60px;border-radius:4px;border:1px solid var(--border)';
+    videoFramesEl.appendChild(thumb);
+  }
+
+  URL.revokeObjectURL(url);
+  frameCountLabel.textContent = videoFrames.length;
+  videoFramesWrap.style.display = '';
+  importGo.disabled = false;
+  importInfo.textContent = `${videoFrames.length} frames extracted. Ready to import.`;
+
+  if (!importId.value) {
+    importId.value = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+  }
+});
+
 btnImport.addEventListener('click', () => {
   importOverlay.classList.add('open');
   importFile.value = '';
   importPreviewWrap.style.display = 'none';
   importGo.disabled = true;
   importBase64 = null;
-  importMode = 'screenshot';
-  tabScreenshot.className = 'btn primary';
-  tabUrl.className = 'btn';
-  importTabScreenshot.style.display = '';
-  importTabUrl.style.display = 'none';
+  videoFrames = [];
+  videoFramesWrap.style.display = 'none';
+  if (importVideoFile) importVideoFile.value = '';
+  setImportTab('screenshot');
   importInfo.className = 'llm-status disconnected';
-  importInfo.textContent = 'Carica uno screenshot o inserisci un URL.';
+  importInfo.textContent = 'Carica uno screenshot, inserisci un URL, o importa un video.';
 });
 
 importCancel.addEventListener('click', () => {
@@ -698,7 +770,14 @@ importGo.addEventListener('click', async () => {
 
   let result;
   try {
-    if (importMode === 'url') {
+    if (importMode === 'video') {
+      importInfo.textContent = `Analyzing ${videoFrames.length} frames with LLM vision...`;
+      result = await apiPost('/api/import/video', {
+        frames: videoFrames,
+        id: importId.value || 'imported-page',
+        language: importLang.value,
+      });
+    } else if (importMode === 'url') {
       importInfo.textContent = 'Fetching and analyzing URL...';
       result = await apiPost('/api/import/url', {
         url: importUrlInput.value.trim(),
