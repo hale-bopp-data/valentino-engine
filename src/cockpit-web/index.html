@@ -353,6 +353,7 @@
       <button class="btn primary" id="tabScreenshot" style="flex:1">Screenshot</button>
       <button class="btn" id="tabUrl" style="flex:1">URL</button>
       <button class="btn" id="tabVideo" style="flex:1">Video</button>
+      <button class="btn" id="tabProject" style="flex:1">Project</button>
     </div>
     <!-- Screenshot tab -->
     <div id="importTabScreenshot">
@@ -380,6 +381,16 @@
       <div class="field" id="videoFramesWrap" style="display:none">
         <label>Frames estratti (<span id="frameCountLabel">0</span>)</label>
         <div id="videoFrames" style="display:flex;gap:4px;overflow-x:auto;padding:4px 0"></div>
+      </div>
+    </div>
+    <!-- Project tab -->
+    <div id="importTabProject" style="display:none">
+      <div class="field">
+        <label>Project directory (local path)</label>
+        <input type="text" id="importProjectPath" placeholder="C:\projects\my-site">
+      </div>
+      <div class="field" id="projectScanWrap" style="display:none">
+        <div class="llm-status connected" id="projectScanInfo"></div>
       </div>
     </div>
     <div class="field">
@@ -629,6 +640,11 @@ const tabVideo = document.getElementById('tabVideo');
 const importTabScreenshot = document.getElementById('importTabScreenshot');
 const importTabUrl = document.getElementById('importTabUrl');
 const importTabVideo = document.getElementById('importTabVideo');
+const tabProject = document.getElementById('tabProject');
+const importTabProject = document.getElementById('importTabProject');
+const importProjectPath = document.getElementById('importProjectPath');
+const projectScanWrap = document.getElementById('projectScanWrap');
+const projectScanInfo = document.getElementById('projectScanInfo');
 const importUrlInput = document.getElementById('importUrl');
 const importVideoFile = document.getElementById('importVideoFile');
 const videoFramesWrap = document.getElementById('videoFramesWrap');
@@ -639,8 +655,8 @@ let videoFrames = []; // { base64, mimeType, timestamp }
 
 function setImportTab(mode) {
   importMode = mode;
-  const tabs = { screenshot: tabScreenshot, url: tabUrl, video: tabVideo };
-  const panels = { screenshot: importTabScreenshot, url: importTabUrl, video: importTabVideo };
+  const tabs = { screenshot: tabScreenshot, url: tabUrl, video: tabVideo, project: tabProject };
+  const panels = { screenshot: importTabScreenshot, url: importTabUrl, video: importTabVideo, project: importTabProject };
   for (const [k, btn] of Object.entries(tabs)) {
     btn.className = k === mode ? 'btn primary' : 'btn';
   }
@@ -650,11 +666,25 @@ function setImportTab(mode) {
   if (mode === 'screenshot') importGo.disabled = !importBase64;
   else if (mode === 'url') importGo.disabled = !importUrlInput.value.trim();
   else if (mode === 'video') importGo.disabled = videoFrames.length === 0;
+  else if (mode === 'project') importGo.disabled = !importProjectPath.value.trim();
 }
 
 tabScreenshot.addEventListener('click', () => setImportTab('screenshot'));
 tabUrl.addEventListener('click', () => setImportTab('url'));
 tabVideo.addEventListener('click', () => setImportTab('video'));
+tabProject.addEventListener('click', () => setImportTab('project'));
+
+// Auto-scan project on path input
+importProjectPath?.addEventListener('change', async () => {
+  const path = importProjectPath.value.trim();
+  if (!path) return;
+  try {
+    const scan = await apiPost('/api/import/project/scan', { path });
+    projectScanWrap.style.display = '';
+    projectScanInfo.textContent = `${scan.htmlFiles?.length || 0} HTML, ${scan.cssFiles?.length || 0} CSS${scan.framework ? `, framework: ${scan.framework}` : ''}`;
+    importGo.disabled = !(scan.htmlFiles?.length > 0);
+  } catch { projectScanWrap.style.display = 'none'; }
+});
 
 importUrlInput?.addEventListener('input', () => {
   if (importMode === 'url') {
@@ -770,7 +800,13 @@ importGo.addEventListener('click', async () => {
 
   let result;
   try {
-    if (importMode === 'video') {
+    if (importMode === 'project') {
+      importInfo.textContent = 'Scanning and analyzing project...';
+      result = await apiPost('/api/import/project', {
+        path: importProjectPath.value.trim(),
+        language: importLang.value,
+      });
+    } else if (importMode === 'video') {
       importInfo.textContent = `Analyzing ${videoFrames.length} frames with LLM vision...`;
       result = await apiPost('/api/import/video', {
         frames: videoFrames,
