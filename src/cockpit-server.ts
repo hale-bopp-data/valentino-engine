@@ -27,6 +27,7 @@ import type { IntentLlmCallback } from './core/intent-parser.js';
 import { getPageSpecSchema, getCockpitActionSchema, getAllSectionSchemas } from './core/schema-export.js';
 import { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
 import type { OpenRouterConfig } from './core/openrouter-client.js';
+import { importFromImage, createVisionCallback } from './core/visual-import.js';
 
 // ---------------------------------------------------------------------------
 // Server state
@@ -243,6 +244,65 @@ function handleApi(req: IncomingMessage, res: ServerResponse, state: ServerState
         state.llm = null;
         state.llmConfig = null;
         json(res, { success: true });
+        return;
+    }
+
+    // POST /api/import/image — visual import from screenshot
+    if (path === '/api/import/image' && req.method === 'POST') {
+        readBody(req).then(async body => {
+            const { image, mimeType, id, profile, language } = JSON.parse(body);
+            if (!image) {
+                json(res, { error: 'Missing "image" field (base64)' }, 400);
+                return;
+            }
+
+            // Need an API key for vision
+            const apiKey = state.llmConfig?.connected
+                ? undefined  // will use existing config
+                : process.env.OPENROUTER_API_KEY;
+
+            // Try to extract key from current LLM state or env
+            let visionKey: string | undefined;
+            // Check env first
+            if (process.env.OPENROUTER_API_KEY) {
+                visionKey = process.env.OPENROUTER_API_KEY;
+            }
+
+            if (!visionKey) {
+                json(res, {
+                    success: false,
+                    error: 'Vision import requires an OpenRouter API key. Configure it in Settings or set OPENROUTER_API_KEY env var.',
+                }, 400);
+                return;
+            }
+
+            const visionModel = process.env.OPENROUTER_VISION_MODEL || 'anthropic/claude-sonnet-4-6';
+            const visionLlm = createVisionCallback(visionKey, visionModel);
+
+            const result = await importFromImage(
+                image,
+                mimeType || 'image/png',
+                visionLlm,
+                {
+                    id: id || `imported-${Date.now()}`,
+                    profile,
+                    language: language || 'it',
+                },
+            );
+
+            if (result.success && result.spec) {
+                // Replace current spec with imported one
+                state.history.push(structuredClone(state.spec));
+                state.spec = result.spec;
+                state.actionCount++;
+            }
+
+            json(res, {
+                ...result,
+                actionCount: state.actionCount,
+                undoAvailable: state.history.length,
+            });
+        }).catch(() => json(res, { error: 'Invalid JSON body' }, 400));
         return;
     }
 
