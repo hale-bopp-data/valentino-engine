@@ -86,6 +86,67 @@ Any MCP-compatible AI agent can connect to Valentino Engine:
 | `valentino_get_skill` | Get design skill rules |
 | `valentino_list_guardrails` | List 10 Sovereign Guardrails |
 
+## Valentino Cockpit — Il Sarto Parla
+
+Interactive conversational cockpit for building and editing pages. Speak naturally (IT/EN), import from screenshots, URLs, videos, or existing projects.
+
+### Quick Launch
+
+```bash
+# Windows
+cockpit.bat
+
+# Mac / Linux
+./cockpit.sh
+
+# Any OS
+npx tsx src/cockpit-server.ts examples/minimal-site/pages/home.json
+```
+
+Then open **http://localhost:3781** in your browser.
+
+### With LLM (smart parsing)
+
+```bash
+# Windows
+set OPENROUTER_API_KEY=sk-or-v1-your-key
+cockpit.bat
+
+# Mac / Linux
+OPENROUTER_API_KEY=sk-or-v1-your-key ./cockpit.sh
+```
+
+Or configure the API key from the **Settings** button in the browser UI.
+
+### Custom page spec & port
+
+```bash
+# Windows
+cockpit.bat path\to\my-page.json 4000
+
+# Mac / Linux
+./cockpit.sh path/to/my-page.json 4000
+```
+
+### CLI REPL (no browser)
+
+```bash
+npx tsx src/bin/valentino.ts cockpit examples/minimal-site/pages/home.json
+```
+
+### Features
+
+| Feature | What it does |
+|---------|-------------|
+| **Chat** | Speak naturally: "mostrami le sezioni", "aggiungi stats", "rimuovi la cta" |
+| **Import Screenshot** | Upload a screenshot, LLM vision generates a page spec |
+| **Import URL** | Paste a URL, system fetches and analyzes the page |
+| **Import Video** | Upload a video, browser extracts frames, LLM composes a page |
+| **Import Project** | Point to a local HTML/CSS folder, generates governed specs |
+| **Undo / Save** | Full undo history, save to disk |
+| **Settings** | Configure OpenRouter API key and model from the UI |
+| **Live Preview** | See page sections update in real-time as you work |
+
 ## The 10 Sovereign Guardrails
 
 1. **WhatIf di Layout** — Wireframe first, code second

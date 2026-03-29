@@ -149,6 +149,10 @@ export type { ReplOptions, ReplSession } from './core/cockpit-repl.js';
 export { importFromImage, createVisionCallback } from './core/visual-import.js';
 export type { VisualImportResult, VisualImportOptions, VisionLlmCallback } from './core/visual-import.js';
 
+// Video Import — Frames → multi-frame analysis → PageSpecV1 (Feature #784, PBI #787)
+export { importFromVideo, selectKeyFrames } from './core/video-import.js';
+export type { VideoImportResult, VideoImportOptions, FrameData } from './core/video-import.js';
+
 // URL Import — URL → screenshot/HTML → PageSpecV1 (Feature #784, PBI #786)
 export { importFromUrl } from './core/url-import.js';
 export type { UrlImportResult, UrlImportOptions, HtmlLlmCallback } from './core/url-import.js';
