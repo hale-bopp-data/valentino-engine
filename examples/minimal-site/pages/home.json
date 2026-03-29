@@ -1,0 +1,44 @@
+{
+  "version": "1",
+  "id": "home",
+  "sections": [
+    {
+      "type": "hero",
+      "presentation": {
+        "surface": "dark",
+        "height": "screen-md"
+      },
+      "titleKey": "Welcome to Minimal Site",
+      "taglineKey": "Powered by valentino-engine — sovereign, agent-native, antifragile."
+    },
+    {
+      "type": "cards",
+      "presentation": {
+        "surface": "default"
+      },
+      "titleKey": "Why Valentino?",
+      "items": [
+        {
+          "titleKey": "Sovereign",
+          "descriptionKey": "Zero vendor lock-in. Your code, your rules."
+        },
+        {
+          "titleKey": "Agent-Native",
+          "descriptionKey": "JSON-first: agents compose pages, not humans typing HTML."
+        },
+        {
+          "titleKey": "Antifragile",
+          "descriptionKey": "10 guardrails + 4 guardians protect every page automatically."
+        }
+      ]
+    },
+    {
+      "type": "cta",
+      "presentation": {
+        "surface": "accent"
+      },
+      "titleKey": "Ready to build?",
+      "descriptionKey": "Install valentino-engine and create your first page in 5 minutes."
+    }
+  ]
+}

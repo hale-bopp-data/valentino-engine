@@ -1,0 +1,18 @@
+{
+  "name": "valentino-minimal-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal site built with @hale-bopp/valentino-engine — proof that the framework works standalone.",
+  "type": "module",
+  "scripts": {
+    "validate": "valentino validate pages/home.json pages/about.json --all",
+    "validate:home": "valentino validate pages/home.json",
+    "validate:about": "valentino validate pages/about.json",
+    "probe": "valentino probe all pages/home.json && valentino probe all pages/about.json",
+    "audit": "valentino guardrails",
+    "check": "npm run validate && npm run probe"
+  },
+  "dependencies": {
+    "@hale-bopp/valentino-engine": "^2.1.0"
+  }
+}
