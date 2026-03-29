@@ -76,6 +76,6 @@ Usage:
   valentino manifest resolve <manifest.json> --route /path      Resolve route to page ID
   valentino llms <manifest.json> [--content c.json] [--site N]  Generate llms.txt + llms-full.txt
 
-Epic: https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_workitems/edit/480
+GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
 }

@@ -1,6 +1,6 @@
 # Valentino Engine
 
-> **Antifragile Open Source UI Design Engine** — part of the [HALE-BOPP](https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_git/hale-bopp-valentino-engine) family.
+> **Antifragile Open Source UI Design Engine** — part of the [HALE-BOPP](https://github.com/hale-bopp-data) family.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![npm](https://img.shields.io/npm/v/@hale-bopp/valentino-engine)](https://www.npmjs.com/package/@hale-bopp/valentino-engine)
@@ -101,7 +101,7 @@ Any MCP-compatible AI agent can connect to Valentino Engine:
 
 ## Contributing
 
-PRs welcome! Please link your PR to an ADO Work Item under [Epic #480](https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_workitems/edit/480).
+PRs welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
