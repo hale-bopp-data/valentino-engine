@@ -3,12 +3,14 @@
  * Interactive cockpit for page spec manipulation.
  *
  * Usage:
- *   valentino cockpit <spec.json> <action.json>    Execute action on spec
- *   valentino cockpit <spec.json> --describe        Describe page structure
- *   valentino cockpit <spec.json> --validate        Validate page spec
- *   valentino cockpit --schema page                 Print PageSpecV1 JSON Schema
- *   valentino cockpit --schema action               Print CockpitAction JSON Schema
- *   valentino cockpit --schema section <type>       Print section JSON Schema
+ *   valentino cockpit <spec.json>                     Interactive REPL (Phase 1)
+ *   valentino cockpit <spec.json> <action.json>       Execute action on spec
+ *   valentino cockpit <spec.json> --describe          Describe page structure
+ *   valentino cockpit <spec.json> --validate          Validate page spec
+ *   valentino cockpit <spec.json> --parse "text"      Parse intent (dry run)
+ *   valentino cockpit --schema page                   Print PageSpecV1 JSON Schema
+ *   valentino cockpit --schema action                 Print CockpitAction JSON Schema
+ *   valentino cockpit --schema section <type>         Print section JSON Schema
  */
 
 import { readFileSync, existsSync, writeFileSync } from 'fs';
@@ -26,13 +28,15 @@ import {
     getSectionSchema,
     getSchemaDefinedSectionTypes,
 } from '../../core/schema-export.js';
+import { parseIntentLocal } from '../../core/intent-parser.js';
+import { startRepl } from '../../core/cockpit-repl.js';
 
 function loadJSON<T>(filePath: string): T | null {
     if (!existsSync(filePath)) return null;
     try { return JSON.parse(readFileSync(filePath, 'utf-8')); } catch { return null; }
 }
 
-export function runCockpit(args: string[]): void {
+export async function runCockpit(args: string[]): Promise<void> {
     // Schema mode
     if (args.includes('--schema')) {
         const schemaIdx = args.indexOf('--schema');
@@ -73,12 +77,14 @@ export function runCockpit(args: string[]): void {
   valentino cockpit — Conversational Cockpit for page spec manipulation
 
   Usage:
-    valentino cockpit <spec.json> <action.json>    Execute action on spec
-    valentino cockpit <spec.json> --describe        Describe page structure
-    valentino cockpit <spec.json> --validate        Validate page spec
-    valentino cockpit --schema page                 Print PageSpecV1 JSON Schema
-    valentino cockpit --schema action               Print CockpitAction JSON Schema
-    valentino cockpit --schema section <type>       Print section JSON Schema
+    valentino cockpit <spec.json>                     Interactive REPL
+    valentino cockpit <spec.json> <action.json>       Execute action on spec
+    valentino cockpit <spec.json> --describe          Describe page structure
+    valentino cockpit <spec.json> --validate          Validate page spec
+    valentino cockpit <spec.json> --parse "text"      Parse intent (dry run)
+    valentino cockpit --schema page                   Print PageSpecV1 JSON Schema
+    valentino cockpit --schema action                 Print CockpitAction JSON Schema
+    valentino cockpit --schema section <type>         Print section JSON Schema
 `);
         return;
     }
@@ -113,6 +119,39 @@ export function runCockpit(args: string[]): void {
                 console.log(`  ⚠  [${w.source}] ${w.message}`);
             }
         }
+        return;
+    }
+
+    // Parse mode: dry-run intent parsing
+    if (args.includes('--parse')) {
+        const parseIdx = args.indexOf('--parse');
+        const text = args[parseIdx + 1];
+        if (!text) {
+            console.error('Usage: valentino cockpit <spec.json> --parse "your request"');
+            process.exit(1);
+        }
+        const result = parseIntentLocal(text, spec);
+        if (result.intent) {
+            console.log(`  Intent: ${result.intent.description}`);
+            console.log(`  Confidence: ${result.intent.confidence}`);
+            console.log(`  Action: ${JSON.stringify(result.intent.action, null, 2)}`);
+        } else {
+            console.log('  Could not parse intent from input.');
+        }
+        return;
+    }
+
+    // Interactive REPL mode: only spec file, no action file, no flags
+    if (files.length === 1 && !args.some(a => a.startsWith('--'))) {
+        const { writeFileSync: writeFs } = await import('fs');
+        const savedPath = specPath;
+        await startRepl({
+            spec,
+            onSpecChange: (updatedSpec) => {
+                writeFs(savedPath, JSON.stringify(updatedSpec, null, 2) + '\n');
+                console.log(`  Saved to ${savedPath}`);
+            },
+        });
         return;
     }
 

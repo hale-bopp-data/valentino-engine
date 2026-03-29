@@ -135,6 +135,16 @@ export type {
     CockpitBatchResult,
 } from './core/cockpit-api.js';
 
+// Intent Parser — Natural language → CockpitAction (Feature #778, PBI #780)
+export { parseIntent, parseIntentLocal, buildMinimalSection, buildSectionSummary } from './core/intent-parser.js';
+export type {
+    ParsedIntent, IntentParseResult, IntentLlmCallback, IntentLlmContext,
+} from './core/intent-parser.js';
+
+// REPL — Interactive conversational loop (Feature #778, PBI #780)
+export { processReplInput, createReplSession, startRepl } from './core/cockpit-repl.js';
+export type { ReplOptions, ReplSession } from './core/cockpit-repl.js';
+
 // Schema Export — JSON Schema for external consumers (Feature #778, PBI #779)
 export {
     getPageSpecSchema, getCockpitActionSchema,

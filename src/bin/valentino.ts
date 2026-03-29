@@ -80,7 +80,9 @@ Usage:
   valentino catalog resolve <spec.json> --catalog <catalog.json> Resolve spec with catalog
   valentino manifest resolve <manifest.json> --route /path      Resolve route to page ID
   valentino llms <manifest.json> [--content c.json] [--site N]  Generate llms.txt + llms-full.txt
+  valentino cockpit <spec.json>                                Interactive conversational REPL
   valentino cockpit <spec.json> <action.json>                  Execute cockpit action on page spec
+  valentino cockpit <spec.json> --parse "text"                 Parse intent (dry run)
   valentino cockpit --schema <page|action|section [type]>      Print JSON Schema
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
