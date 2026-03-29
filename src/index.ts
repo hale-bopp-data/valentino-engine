@@ -145,6 +145,10 @@ export type {
 export { processReplInput, createReplSession, startRepl } from './core/cockpit-repl.js';
 export type { ReplOptions, ReplSession } from './core/cockpit-repl.js';
 
+// Cockpit Server — HTTP API + Web UI (Feature #778, PBI #781)
+export { startCockpitServer } from './cockpit-server.js';
+export type { CockpitServerOptions } from './cockpit-server.js';
+
 // Schema Export — JSON Schema for external consumers (Feature #778, PBI #779)
 export {
     getPageSpecSchema, getCockpitActionSchema,
