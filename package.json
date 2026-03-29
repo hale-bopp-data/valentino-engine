@@ -13,6 +13,10 @@
     "./mcp": {
       "types": "./dist/mcp/index.d.ts",
       "import": "./dist/mcp/index.js"
+    },
+    "./cockpit-server": {
+      "types": "./dist/cockpit-server.d.ts",
+      "import": "./dist/cockpit-server.js"
     }
   },
   "bin": {
@@ -30,13 +34,15 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs=require('fs');const p=require('path');fs.mkdirSync('dist/cockpit-web',{recursive:true});fs.copyFileSync('src/cockpit-web/index.html','dist/cockpit-web/index.html')\"",
     "dev": "tsx watch src/index.ts",
     "test": "vitest run",
     "mcp": "tsx src/mcp/index.ts",
     "audit": "tsx src/bin/valentino.ts audit",
     "probe": "tsx src/bin/valentino.ts probe",
-    "contrast": "tsx src/bin/valentino.ts contrast"
+    "contrast": "tsx src/bin/valentino.ts contrast",
+    "cockpit": "tsx src/bin/valentino.ts cockpit",
+    "cockpit:serve": "tsx src/cockpit-server.ts"
   },
   "keywords": [
     "ui",

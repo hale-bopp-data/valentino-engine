@@ -30,6 +30,7 @@ import {
 } from '../../core/schema-export.js';
 import { parseIntentLocal } from '../../core/intent-parser.js';
 import { startRepl } from '../../core/cockpit-repl.js';
+import { startCockpitServer } from '../../cockpit-server.js';
 
 function loadJSON<T>(filePath: string): T | null {
     if (!existsSync(filePath)) return null;
@@ -78,6 +79,7 @@ export async function runCockpit(args: string[]): Promise<void> {
 
   Usage:
     valentino cockpit <spec.json>                     Interactive REPL
+    valentino cockpit <spec.json> --serve [--port N]  Web cockpit (default: 3781)
     valentino cockpit <spec.json> <action.json>       Execute action on spec
     valentino cockpit <spec.json> --describe          Describe page structure
     valentino cockpit <spec.json> --validate          Validate page spec
@@ -119,6 +121,14 @@ export async function runCockpit(args: string[]): Promise<void> {
                 console.log(`  ⚠  [${w.source}] ${w.message}`);
             }
         }
+        return;
+    }
+
+    // Serve mode: start web cockpit server
+    if (args.includes('--serve')) {
+        const portIdx = args.indexOf('--port');
+        const port = portIdx !== -1 ? parseInt(args[portIdx + 1], 10) : undefined;
+        startCockpitServer({ specPath, port });
         return;
     }
 
