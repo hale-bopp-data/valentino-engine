@@ -51,7 +51,7 @@
   "author": "EasyWay Platform Team",
   "repository": {
     "type": "git",
-    "url": "https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_git/hale-bopp-valentino-engine"
+    "url": "https://github.com/hale-bopp-data/valentino-engine.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
