@@ -30,6 +30,7 @@ import type { OpenRouterConfig } from './core/openrouter-client.js';
 import { importFromImage, createVisionCallback } from './core/visual-import.js';
 import { importFromUrl } from './core/url-import.js';
 import type { HtmlLlmCallback } from './core/url-import.js';
+import { importFromProject, scanProjectDirectory } from './core/project-adapter.js';
 
 // ---------------------------------------------------------------------------
 // Server state
@@ -369,6 +370,75 @@ function handleApi(req: IncomingMessage, res: ServerResponse, state: ServerState
             if (result.success && result.spec) {
                 state.history.push(structuredClone(state.spec));
                 state.spec = result.spec;
+                state.actionCount++;
+            }
+
+            json(res, {
+                ...result,
+                actionCount: state.actionCount,
+                undoAvailable: state.history.length,
+            });
+        }).catch(() => json(res, { error: 'Invalid JSON body' }, 400));
+        return;
+    }
+
+    // GET /api/import/project/scan — scan project directory
+    if (path === '/api/import/project/scan' && req.method === 'POST') {
+        readBody(req).then(body => {
+            const { path: projectPath } = JSON.parse(body);
+            if (!projectPath) {
+                json(res, { error: 'Missing "path" field' }, 400);
+                return;
+            }
+            const scan = scanProjectDirectory(projectPath);
+            json(res, scan);
+        }).catch(() => json(res, { error: 'Invalid JSON body' }, 400));
+        return;
+    }
+
+    // POST /api/import/project — full project import
+    if (path === '/api/import/project' && req.method === 'POST') {
+        readBody(req).then(async body => {
+            const { path: projectPath, language } = JSON.parse(body);
+            if (!projectPath) {
+                json(res, { error: 'Missing "path" field' }, 400);
+                return;
+            }
+
+            const visionKey = process.env.OPENROUTER_API_KEY;
+            if (!visionKey) {
+                json(res, { success: false, error: 'Project import requires OPENROUTER_API_KEY.' }, 400);
+                return;
+            }
+
+            const textModel = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5-20251001';
+            const htmlLlm: HtmlLlmCallback = async (systemPrompt, userPrompt) => {
+                const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${visionKey}`,
+                        'HTTP-Referer': 'https://valentino-engine.dev',
+                    },
+                    body: JSON.stringify({
+                        model: textModel,
+                        max_tokens: 4096,
+                        temperature: 0.1,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt },
+                        ],
+                    }),
+                });
+                const data = await resp.json() as any;
+                return data.choices?.[0]?.message?.content || '';
+            };
+
+            const result = await importFromProject(projectPath, htmlLlm, { language: language || 'it' });
+
+            if (result.success && result.primarySpec) {
+                state.history.push(structuredClone(state.spec));
+                state.spec = result.primarySpec;
                 state.actionCount++;
             }
 

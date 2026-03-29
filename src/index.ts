@@ -153,6 +153,10 @@ export type { VisualImportResult, VisualImportOptions, VisionLlmCallback } from 
 export { importFromUrl } from './core/url-import.js';
 export type { UrlImportResult, UrlImportOptions, HtmlLlmCallback } from './core/url-import.js';
 
+// Project Adapter — HTML/CSS project → PageSpecV1 (Feature #784, PBI #788)
+export { importFromProject, scanProjectDirectory, analyzeHtmlStructure } from './core/project-adapter.js';
+export type { ProjectScanResult, ProjectPageResult, ProjectAdapterResult, ProjectAdapterOptions } from './core/project-adapter.js';
+
 // OpenRouter Client — LLM integration for intent parsing (Feature #778)
 export { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
 export type { OpenRouterConfig } from './core/openrouter-client.js';
