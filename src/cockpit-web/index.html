@@ -313,6 +313,7 @@
   <span class="page-info" id="pageInfo">Loading...</span>
   <div class="actions">
     <button class="btn" id="btnUndo" disabled>Undo</button>
+    <button class="btn" id="btnImport">Import</button>
     <button class="btn" id="btnSave">Save</button>
     <button class="btn" id="btnSettings">Settings</button>
   </div>
@@ -340,6 +341,36 @@
       <span id="sectionCount">0 sections</span>
     </div>
     <div class="preview-body" id="preview"></div>
+  </div>
+</div>
+
+<!-- Import overlay -->
+<div class="overlay" id="importOverlay">
+  <div class="settings-panel">
+    <h2>VISUAL IMPORT — Il Sarto Copia</h2>
+    <div class="llm-status disconnected" id="importInfo">Carica uno screenshot e Valentino lo trasforma in una pagina governata.</div>
+    <div class="field">
+      <label>Screenshot</label>
+      <input type="file" id="importFile" accept="image/png,image/jpeg,image/webp" style="padding:6px">
+    </div>
+    <div class="field" id="importPreviewWrap" style="display:none">
+      <img id="importPreview" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border)">
+    </div>
+    <div class="field">
+      <label>Page ID</label>
+      <input type="text" id="importId" placeholder="my-new-page" value="">
+    </div>
+    <div class="field">
+      <label>Language</label>
+      <select id="importLang">
+        <option value="it">Italiano</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <div class="settings-actions">
+      <button class="btn" id="importCancel">Cancel</button>
+      <button class="btn primary" id="importGo" disabled>Importa</button>
+    </div>
   </div>
 </div>
 
@@ -547,6 +578,107 @@ btnSave.addEventListener('click', async () => {
   } else {
     addMessage(`Save failed: ${result.error}`, 'system', 'error');
   }
+});
+
+// --- Import ---
+
+const importOverlay = document.getElementById('importOverlay');
+const btnImport = document.getElementById('btnImport');
+const importFile = document.getElementById('importFile');
+const importPreview = document.getElementById('importPreview');
+const importPreviewWrap = document.getElementById('importPreviewWrap');
+const importId = document.getElementById('importId');
+const importLang = document.getElementById('importLang');
+const importGo = document.getElementById('importGo');
+const importCancel = document.getElementById('importCancel');
+const importInfo = document.getElementById('importInfo');
+
+let importBase64 = null;
+let importMime = null;
+
+btnImport.addEventListener('click', () => {
+  importOverlay.classList.add('open');
+  importFile.value = '';
+  importPreviewWrap.style.display = 'none';
+  importGo.disabled = true;
+  importBase64 = null;
+  importInfo.className = 'llm-status disconnected';
+  importInfo.textContent = 'Carica uno screenshot e Valentino lo trasforma in una pagina governata.';
+});
+
+importCancel.addEventListener('click', () => {
+  importOverlay.classList.remove('open');
+});
+
+importOverlay.addEventListener('click', (e) => {
+  if (e.target === importOverlay) importOverlay.classList.remove('open');
+});
+
+importFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  importMime = file.type;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;
+    importPreview.src = dataUrl;
+    importPreviewWrap.style.display = 'block';
+    // Extract base64 without data: prefix
+    importBase64 = dataUrl.split(',')[1];
+    importGo.disabled = false;
+
+    // Auto-generate ID from filename
+    if (!importId.value) {
+      importId.value = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+importGo.addEventListener('click', async () => {
+  if (!importBase64) return;
+
+  importGo.disabled = true;
+  importGo.textContent = 'Analyzing...';
+  importInfo.className = 'llm-status disconnected';
+  importInfo.textContent = 'Analyzing screenshot with LLM vision...';
+
+  try {
+    const result = await apiPost('/api/import/image', {
+      image: importBase64,
+      mimeType: importMime,
+      id: importId.value || 'imported-page',
+      language: importLang.value,
+    });
+
+    if (result.success) {
+      importInfo.className = 'llm-status connected';
+      importInfo.textContent = `Imported! ${result.detectedSections?.length || 0} sections detected.`;
+      addMessage(
+        `<div class="description">Visual Import: ${result.detectedSections?.join(', ')}</div>` +
+        (result.warnings?.length ? '<div class="warnings">' + result.warnings.join('<br>') + '</div>' : ''),
+        'system', 'success'
+      );
+
+      // Refresh preview
+      const specResult = await apiGet('/api/spec');
+      updatePreview(specResult.spec);
+      updateStatus(specResult.actionCount, specResult.undoAvailable);
+
+      setTimeout(() => importOverlay.classList.remove('open'), 1500);
+    } else {
+      importInfo.className = 'llm-status disconnected';
+      importInfo.textContent = result.error || 'Import failed';
+      addMessage(`Import failed: ${result.error || result.warnings?.join(', ')}`, 'system', 'error');
+    }
+  } catch (err) {
+    importInfo.textContent = `Error: ${err.message}`;
+    addMessage(`Import error: ${err.message}`, 'system', 'error');
+  }
+
+  importGo.disabled = false;
+  importGo.textContent = 'Importa';
 });
 
 // --- Settings ---
