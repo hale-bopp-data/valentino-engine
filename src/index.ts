@@ -145,6 +145,10 @@ export type {
 export { processReplInput, createReplSession, startRepl } from './core/cockpit-repl.js';
 export type { ReplOptions, ReplSession } from './core/cockpit-repl.js';
 
+// OpenRouter Client — LLM integration for intent parsing (Feature #778)
+export { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
+export type { OpenRouterConfig } from './core/openrouter-client.js';
+
 // Cockpit Server — HTTP API + Web UI (Feature #778, PBI #781)
 export { startCockpitServer } from './cockpit-server.js';
 export type { CockpitServerOptions } from './cockpit-server.js';

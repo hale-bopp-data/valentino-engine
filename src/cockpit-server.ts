@@ -22,8 +22,11 @@ import {
     validateCockpitAction,
     describeCockpitAction,
 } from './core/cockpit-api.js';
-import { parseIntentLocal } from './core/intent-parser.js';
+import { parseIntentLocal, parseIntent } from './core/intent-parser.js';
+import type { IntentLlmCallback } from './core/intent-parser.js';
 import { getPageSpecSchema, getCockpitActionSchema, getAllSectionSchemas } from './core/schema-export.js';
+import { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
+import type { OpenRouterConfig } from './core/openrouter-client.js';
 
 // ---------------------------------------------------------------------------
 // Server state
@@ -34,6 +37,8 @@ type ServerState = {
     specPath: string;
     history: PageSpecV1[];
     actionCount: number;
+    llm: IntentLlmCallback | null;
+    llmConfig: { model: string; connected: boolean } | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -146,21 +151,23 @@ function handleApi(req: IncomingMessage, res: ServerResponse, state: ServerState
         return;
     }
 
-    // POST /api/speak — natural language → parse + execute
+    // POST /api/speak — natural language → parse + execute (LLM-aware)
     if (path === '/api/speak' && req.method === 'POST') {
-        readBody(req).then(body => {
+        readBody(req).then(async body => {
             const { text } = JSON.parse(body);
             if (!text) {
                 json(res, { error: 'Missing "text" field' }, 400);
                 return;
             }
 
-            const parseResult = parseIntentLocal(text, state.spec);
+            // Use LLM if available, otherwise local
+            const parseResult = await parseIntent(text, state.spec, state.llm || undefined);
             if (!parseResult.intent) {
                 json(res, {
                     success: false,
                     parsed: false,
                     message: 'Could not parse intent',
+                    mode: parseResult.mode,
                     raw: text,
                 });
                 return;
@@ -190,10 +197,52 @@ function handleApi(req: IncomingMessage, res: ServerResponse, state: ServerState
                 parsed: true,
                 description,
                 confidence,
+                mode: parseResult.mode,
+                fallbackReason: parseResult.fallbackReason,
                 actionCount: state.actionCount,
                 undoAvailable: state.history.length,
             });
+        }).catch(e => json(res, { error: 'Invalid JSON body' }, 400));
+        return;
+    }
+
+    // GET /api/config — current LLM config
+    if (path === '/api/config' && req.method === 'GET') {
+        json(res, {
+            llmConnected: state.llm !== null,
+            llmConfig: state.llmConfig,
+        });
+        return;
+    }
+
+    // POST /api/config — set OpenRouter API key + model
+    if (path === '/api/config' && req.method === 'POST') {
+        readBody(req).then(async body => {
+            const { apiKey, model } = JSON.parse(body);
+            if (!apiKey) {
+                json(res, { error: 'Missing "apiKey" field' }, 400);
+                return;
+            }
+
+            const config: OpenRouterConfig = { apiKey, model };
+            const test = await testOpenRouterConnection(config);
+
+            if (test.ok) {
+                state.llm = createOpenRouterCallback(config);
+                state.llmConfig = { model: model || test.model || 'default', connected: true };
+                json(res, { success: true, model: state.llmConfig.model });
+            } else {
+                json(res, { success: false, error: test.error }, 400);
+            }
         }).catch(() => json(res, { error: 'Invalid JSON body' }, 400));
+        return;
+    }
+
+    // DELETE /api/config — disconnect LLM
+    if (path === '/api/config' && req.method === 'DELETE') {
+        state.llm = null;
+        state.llmConfig = null;
+        json(res, { success: true });
         return;
     }
 
@@ -262,11 +311,24 @@ export function startCockpitServer(options: CockpitServerOptions): void {
     }
 
     const spec = JSON.parse(readFileSync(specPath, 'utf-8')) as PageSpecV1;
+    // Auto-configure LLM from env var
+    let llm: IntentLlmCallback | null = null;
+    let llmConfig: ServerState['llmConfig'] = null;
+    const envKey = process.env.OPENROUTER_API_KEY;
+    const envModel = process.env.OPENROUTER_MODEL;
+    if (envKey) {
+        const config: OpenRouterConfig = { apiKey: envKey, model: envModel };
+        llm = createOpenRouterCallback(config);
+        llmConfig = { model: envModel || 'anthropic/claude-haiku-4.5-20251001', connected: true };
+    }
+
     const state: ServerState = {
         spec,
         specPath,
         history: [],
         actionCount: 0,
+        llm,
+        llmConfig,
     };
 
     const server = createServer((req, res) => {
@@ -283,6 +345,11 @@ export function startCockpitServer(options: CockpitServerOptions): void {
         console.log(`  Page: ${spec.id} (${spec.sections.length} sections)`);
         console.log(`  Server: http://localhost:${port}`);
         console.log(`  API:    http://localhost:${port}/api/spec`);
+        if (state.llm) {
+            console.log(`  LLM:    ${state.llmConfig?.model} (from env)`);
+        } else {
+            console.log(`  LLM:    not configured (set OPENROUTER_API_KEY or use settings)`);
+        }
         console.log(`\n  Open the URL in your browser to start.\n`);
     });
 }

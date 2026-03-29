@@ -242,6 +242,68 @@
   }
   .status-bar .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
   .status-bar .dot.green { background: var(--success); }
+  .status-bar .dot.yellow { background: var(--warning); }
+
+  /* Settings overlay */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5,8,18,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .settings-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    width: 480px;
+    max-width: 90vw;
+  }
+  .settings-panel h2 {
+    color: var(--gold);
+    font-size: 14px;
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 12px;
+    outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--gold-dim); }
+  .settings-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+  .llm-status {
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+  }
+  .llm-status.connected { background: rgba(52,211,153,0.1); border: 1px solid var(--success); color: var(--success); }
+  .llm-status.disconnected { background: rgba(136,144,168,0.1); border: 1px solid var(--border); color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -252,6 +314,7 @@
   <div class="actions">
     <button class="btn" id="btnUndo" disabled>Undo</button>
     <button class="btn" id="btnSave">Save</button>
+    <button class="btn" id="btnSettings">Settings</button>
   </div>
 </div>
 
@@ -280,10 +343,37 @@
   </div>
 </div>
 
+<!-- Settings overlay -->
+<div class="overlay" id="settingsOverlay">
+  <div class="settings-panel">
+    <h2>LLM CONFIGURATION</h2>
+    <div class="llm-status disconnected" id="llmStatus">LLM not connected — local parser only</div>
+    <div class="field">
+      <label>OpenRouter API Key</label>
+      <input type="password" id="cfgApiKey" placeholder="sk-or-v1-...">
+    </div>
+    <div class="field">
+      <label>Model</label>
+      <select id="cfgModel">
+        <option value="anthropic/claude-haiku-4.5-20251001">Claude Haiku 4.5 (fast, cheap)</option>
+        <option value="anthropic/claude-sonnet-4-6">Claude Sonnet 4.6 (balanced)</option>
+        <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="meta-llama/llama-4-scout">Llama 4 Scout</option>
+      </select>
+    </div>
+    <div class="settings-actions">
+      <button class="btn" id="cfgDisconnect">Disconnect</button>
+      <button class="btn" id="cfgCancel">Cancel</button>
+      <button class="btn primary" id="cfgConnect">Connect</button>
+    </div>
+  </div>
+</div>
+
 <div class="status-bar">
   <span><span class="dot green"></span> Connected</span>
   <span id="statusActions">0 actions</span>
   <span id="statusUndo">0 undo</span>
+  <span id="statusLlm"><span class="dot yellow"></span> Local only</span>
 </div>
 
 <script>
@@ -459,13 +549,92 @@ btnSave.addEventListener('click', async () => {
   }
 });
 
+// --- Settings ---
+
+const settingsOverlay = document.getElementById('settingsOverlay');
+const btnSettings = document.getElementById('btnSettings');
+const cfgApiKey = document.getElementById('cfgApiKey');
+const cfgModel = document.getElementById('cfgModel');
+const cfgConnect = document.getElementById('cfgConnect');
+const cfgCancel = document.getElementById('cfgCancel');
+const cfgDisconnect = document.getElementById('cfgDisconnect');
+const llmStatusEl = document.getElementById('llmStatus');
+const statusLlm = document.getElementById('statusLlm');
+
+btnSettings.addEventListener('click', async () => {
+  settingsOverlay.classList.add('open');
+  // Load current config
+  const config = await apiGet('/api/config');
+  updateLlmStatus(config);
+});
+
+cfgCancel.addEventListener('click', () => {
+  settingsOverlay.classList.remove('open');
+});
+
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) settingsOverlay.classList.remove('open');
+});
+
+cfgConnect.addEventListener('click', async () => {
+  const apiKey = cfgApiKey.value.trim();
+  if (!apiKey) return;
+
+  cfgConnect.disabled = true;
+  cfgConnect.textContent = 'Connecting...';
+
+  try {
+    const result = await apiPost('/api/config', {
+      apiKey,
+      model: cfgModel.value,
+    });
+
+    if (result.success) {
+      updateLlmStatus({ llmConnected: true, llmConfig: { model: result.model, connected: true } });
+      addMessage(`LLM connected: ${result.model}`, 'system', 'success');
+      settingsOverlay.classList.remove('open');
+    } else {
+      updateLlmStatus({ llmConnected: false });
+      addMessage(`LLM connection failed: ${result.error}`, 'system', 'error');
+    }
+  } catch (err) {
+    addMessage(`Error: ${err.message}`, 'system', 'error');
+  }
+
+  cfgConnect.disabled = false;
+  cfgConnect.textContent = 'Connect';
+});
+
+cfgDisconnect.addEventListener('click', async () => {
+  await fetch(API + '/api/config', { method: 'DELETE' });
+  updateLlmStatus({ llmConnected: false });
+  addMessage('LLM disconnected. Using local parser.', 'system', 'info');
+  settingsOverlay.classList.remove('open');
+});
+
+function updateLlmStatus(config) {
+  if (config.llmConnected) {
+    llmStatusEl.className = 'llm-status connected';
+    llmStatusEl.textContent = `Connected: ${config.llmConfig?.model || 'unknown'}`;
+    statusLlm.innerHTML = '<span class="dot green"></span> LLM';
+  } else {
+    llmStatusEl.className = 'llm-status disconnected';
+    llmStatusEl.textContent = 'LLM not connected — local parser only';
+    statusLlm.innerHTML = '<span class="dot yellow"></span> Local only';
+  }
+}
+
 // --- Init ---
 
 (async () => {
   try {
-    const result = await apiGet('/api/spec');
-    updatePreview(result.spec);
-    updateStatus(result.actionCount, result.undoAvailable);
+    const [specResult, configResult] = await Promise.all([
+      apiGet('/api/spec'),
+      apiGet('/api/config'),
+    ]);
+    updatePreview(specResult.spec);
+    updateStatus(specResult.actionCount, specResult.undoAvailable);
+    updateLlmStatus(configResult);
   } catch (err) {
     pageInfoEl.textContent = 'Connection failed';
   }
