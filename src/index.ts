@@ -60,12 +60,31 @@ export type { HeroContractWarning, HeroContractResult } from './core/hero-contra
 export { probeSectionIntegrity } from './core/section-integrity.js';
 export type { IntegrityWarning, IntegrityResult } from './core/section-integrity.js';
 
+// Theme Audit — static contrast analysis for theme-packs against surfaces
+export {
+    auditThemePack, auditThemePacks,
+    validateThemePackAgainstRegistry,
+    inferTokenRole, VALENTINO_SURFACES,
+} from './core/theme-audit.js';
+export type {
+    SurfaceKind, SurfaceDefinition, ThemePackTokens, TokenRole,
+    ThemeAuditViolation, ThemeAuditResult, RegistryViolation, BatchAuditResult,
+} from './core/theme-audit.js';
+
+// Contrast Usage Probe — static CSS analysis for unremediated text variables
+export {
+    probeContrastUsage, probeContrastUsageMulti,
+    parseRemappedTokens, parseTextTokenUsages,
+    extractShadowDomStyles,
+} from './core/contrast-usage-probe.js';
+export type { ContrastUsageWarning, ContrastUsageProbeResult, ContrastUsageMultiResult } from './core/contrast-usage-probe.js';
+
 // Skills
 export { premiumDesignSkill, webGuardrailsSkill, designGuidelinesSkill } from './skills/index.js';
 
 // CMS — Page status workflow (PBI #606)
-export { getPageStatus, getPublishAt, isPageVisible } from './core/page-status.js';
-export type { PageStatus } from './core/page-status.js';
+export { getPageStatus, getPublishAt, isPageVisible, getContrastAuditPages } from './core/page-status.js';
+export type { PageStatus, ContrastAuditPage } from './core/page-status.js';
 
 // CMS — Redirects (PBI #606)
 export { findRedirect } from './core/redirects.js';

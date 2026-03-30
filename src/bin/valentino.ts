@@ -14,6 +14,7 @@ import { runContrast } from './commands/contrast.js';
 import { runInit } from './commands/init.js';
 import { runLlms } from './commands/llms.js';
 import { runCockpit } from './commands/cockpit.js';
+import { runThemeAudit } from './commands/theme-audit.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -66,6 +67,10 @@ switch (command) {
         runCockpit(args);
         break;
 
+    case 'theme-audit':
+        runThemeAudit(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
@@ -85,6 +90,7 @@ Usage:
   valentino cockpit <spec.json> <action.json>                  Execute cockpit action on page spec
   valentino cockpit <spec.json> --parse "text"                 Parse intent (dry run)
   valentino cockpit --schema <page|action|section [type]>      Print JSON Schema
+  valentino theme-audit <pack.json> [--registry r.json] [--level AA|AAA]  Audit theme-pack contrast on surfaces
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);

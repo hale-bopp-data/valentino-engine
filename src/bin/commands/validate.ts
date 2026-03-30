@@ -1,7 +1,9 @@
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { validatePageSpec } from '../../core/page-spec.js';
 import { collectPureCmsWarnings } from '../../core/guardrails-cms.js';
+import { auditThemePack, VALENTINO_SURFACES, type ThemePackTokens } from '../../core/theme-audit.js';
+import { probeContrastUsageMulti, extractShadowDomStyles } from '../../core/contrast-usage-probe.js';
 import type { PagesManifestV1 } from '../../core/types.js';
 import type { RedirectRule } from '../../core/redirects.js';
 import type { CmsWarning } from '../../core/guardrails-cms.js';
@@ -146,6 +148,109 @@ export function runValidate(args: string[]): void {
                         console.log(`  ⚠  [${w.type}] ${w.message}`);
                         totalWarnings++;
                     }
+                }
+            }
+        }
+    }
+
+    // 3. Theme-pack contrast audit (if --all)
+    if (args.includes('--all') && projectRoot) {
+        const themePackDir = resolve(projectRoot, 'public/theme-packs');
+        const registryPath = resolve(themePackDir, 'valentino-palette.registry.json');
+        const brandingPath = resolve(projectRoot, 'public/branding.json');
+
+        // Load foundation tokens from branding.json (or registry foundationTokens)
+        let foundationTokens: Record<string, string> = {};
+        const registry = loadJSON<{ foundationTokens?: Record<string, { value: string }>, themePacks?: { mutableTokens: string[] } }>(registryPath);
+        if (registry?.foundationTokens) {
+            for (const [k, v] of Object.entries(registry.foundationTokens)) {
+                foundationTokens[k] = v.value;
+            }
+        }
+
+        // Discover and audit theme-packs
+        if (existsSync(themePackDir)) {
+            const packFiles = readdirSync(themePackDir).filter(f => f.startsWith('theme-pack.') && f.endsWith('.json'));
+
+            // Also audit foundation tokens as a "base" theme (no theme-pack active)
+            if (Object.keys(foundationTokens).length > 0) {
+                const baseResult = auditThemePack(
+                    { id: '_foundation', cssVars: foundationTokens },
+                    { surfaces: VALENTINO_SURFACES, level: 'AA' },
+                );
+                for (const v of baseResult.violations) {
+                    console.error(`  ❌ [theme-contrast] Foundation "${v.token}" (${v.value}) fails on ${v.surface}: ${v.ratio}:1 < ${v.required}:1`);
+                    totalErrors++;
+                    hasErrors = true;
+                }
+            }
+
+            for (const file of packFiles) {
+                const raw = loadJSON<{ id?: string; cssVars?: Record<string, string> }>(resolve(themePackDir, file));
+                if (!raw?.cssVars) continue;
+
+                const tp: ThemePackTokens = { id: raw.id ?? file, cssVars: raw.cssVars };
+                const result = auditThemePack(tp, {
+                    surfaces: VALENTINO_SURFACES,
+                    level: 'AA',
+                    foundationTokens,
+                });
+
+                for (const v of result.violations) {
+                    console.error(`  ❌ [theme-contrast] ${tp.id}: "${v.token}" (${v.value}) fails on ${v.surface}: ${v.ratio}:1 < ${v.required}:1`);
+                    totalErrors++;
+                    hasErrors = true;
+                }
+
+                if (!quietMode && result.passed) {
+                    console.log(`  ✅ theme-pack ${tp.id}: all contrast checks pass`);
+                }
+            }
+        }
+
+        // 4. CSS usage probe — find text variables without surface remaps
+        //    Scans framework.css + Shadow DOM component styles
+        const frameworkCssPath = resolve(projectRoot, 'src/framework.css');
+        if (existsSync(frameworkCssPath)) {
+            const primaryCss = readFileSync(frameworkCssPath, 'utf-8');
+
+            // Discover Shadow DOM component styles
+            const componentSources: Array<{ name: string; css: string }> = [];
+            const componentsDir = resolve(projectRoot, 'src/components');
+            if (existsSync(componentsDir)) {
+                const scanDirs = [componentsDir, resolve(componentsDir, 'lib')];
+                for (const dir of scanDirs) {
+                    if (!existsSync(dir)) continue;
+                    const tsFiles = readdirSync(dir).filter(f => f.endsWith('.ts'));
+                    for (const file of tsFiles) {
+                        const content = readFileSync(resolve(dir, file), 'utf-8');
+                        const styles = extractShadowDomStyles(content, file);
+                        for (const s of styles) {
+                            componentSources.push({ name: s.componentName, css: s.css });
+                        }
+                    }
+                }
+            }
+
+            const usageResult = probeContrastUsageMulti(primaryCss, componentSources);
+
+            for (const w of usageResult.warnings) {
+                if (w.severity === 'error') {
+                    console.error(`  ❌ [contrast-usage] ${w.message}`);
+                    totalErrors++;
+                    hasErrors = true;
+                } else {
+                    console.log(`  ⚠  [contrast-usage] ${w.message}`);
+                    totalWarnings++;
+                }
+            }
+
+            if (!quietMode) {
+                const srcCount = usageResult.sources.filter(s => s.warningCount > 0).length;
+                if (usageResult.valid) {
+                    console.log(`  ✅ CSS usage probe: all text tokens remapped (${usageResult.sources.length} sources scanned)`);
+                } else {
+                    console.log(`  ⚠  ${usageResult.warnings.length} unremediated token(s) across ${srcCount} source(s)`);
                 }
             }
         }
