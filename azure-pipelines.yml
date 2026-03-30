@@ -107,6 +107,6 @@ stages:
             displayName: 'CLI: valentino contrast (smoke)'
 
           - script: |
-              echo '{"version":"1","id":"smoke","sections":[{"type":"hero","titleKey":"h"},{"type":"cta","titleKey":"c"}]}' > /tmp/smoke-spec.json
+              echo '{"version":"1","id":"smoke","sections":[{"type":"hero","titleKey":"h","presentation":{"surface":"dark"}},{"type":"cta","titleKey":"c","presentation":{"surface":"accent"}}]}' > /tmp/smoke-spec.json
               node dist/bin/valentino.js probe all /tmp/smoke-spec.json
             displayName: 'CLI: valentino probe all (smoke)'
