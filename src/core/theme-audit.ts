@@ -78,12 +78,13 @@ export const VALENTINO_SURFACES: SurfaceDefinition[] = [
 
 export function inferTokenRole(varName: string): TokenRole {
     const lower = varName.toLowerCase();
-    if (lower.includes('text') || lower.includes('font') || lower.includes('color'))
-        return 'text';
-    if (lower.includes('bg') || lower.includes('background') || lower.includes('surface'))
-        return 'background';
+    // Border check BEFORE color — --border-color is a border, not text
     if (lower.includes('border') || lower.includes('glass-border'))
         return 'border';
+    if (lower.includes('bg') || lower.includes('background') || lower.includes('surface'))
+        return 'background';
+    if (lower.includes('text') || lower.includes('font'))
+        return 'text';
     if (lower.includes('accent') || lower.includes('gold') || lower.includes('cyan') || lower.includes('violet'))
         return 'accent';
     return 'unknown';
