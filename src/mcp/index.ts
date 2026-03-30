@@ -10,6 +10,9 @@ import { probeHeroContract } from '../core/hero-contract.js';
 import { probeSectionIntegrity } from '../core/section-integrity.js';
 import { resolvePageSpecWithCatalog } from '../core/catalog.js';
 import { resolvePageIdByRoute } from '../core/manifest.js';
+import { auditThemePack, validateThemePackAgainstRegistry, VALENTINO_SURFACES, type ThemePackTokens, type SurfaceDefinition } from '../core/theme-audit.js';
+import { probeContrastUsage } from '../core/contrast-usage-probe.js';
+import type { ContrastLevel } from '../core/contrast.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
 
 const server = new McpServer({
@@ -74,6 +77,54 @@ server.tool(
   },
   async ({ foreground, background, level }) => {
     return jsonResult(checkWcagContrast(foreground, background, level || 'AA'));
+  },
+);
+
+// ─── Theme Audit ─────────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_theme_audit',
+  'Audit a theme-pack for WCAG contrast violations across all Valentino surfaces. Crosses every text/accent token with every surface background.',
+  {
+    themePack: z.string().describe('Theme-pack JSON string (with id and cssVars)'),
+    level: z.enum(['AA', 'AAA']).optional().describe('WCAG level (default: AA)'),
+    surfaces: z.string().optional().describe('Optional surfaces JSON array. Uses Valentino defaults if omitted.'),
+    registry: z.string().optional().describe('Optional palette registry JSON for mutableTokens validation'),
+  },
+  async ({ themePack, level, surfaces, registry }) => {
+    const tp: ThemePackTokens = (() => {
+      const raw = JSON.parse(themePack);
+      return { id: raw.id ?? 'unknown', cssVars: raw.cssVars ?? {} };
+    })();
+
+    const surfaceDefs: SurfaceDefinition[] = surfaces
+      ? JSON.parse(surfaces)
+      : VALENTINO_SURFACES;
+
+    const contrastResult = auditThemePack(tp, {
+      surfaces: surfaceDefs,
+      level: (level as ContrastLevel) || 'AA',
+    });
+
+    const registryViolations = registry
+      ? validateThemePackAgainstRegistry(tp, (JSON.parse(registry) as { themePacks: { mutableTokens: string[] } }).themePacks)
+      : [];
+
+    return jsonResult({ ...contrastResult, registryViolations });
+  },
+);
+
+// ─── Contrast Usage Probe ────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_probe_contrast_usage',
+  'Probe CSS for text/accent variables used without surface-aware remapping. Finds tokens that will be invisible on light surfaces.',
+  {
+    css: z.string().describe('Full CSS content (e.g., framework.css)'),
+  },
+  async ({ css }) => {
+    const result = probeContrastUsage(css);
+    return jsonResult(result);
   },
 );
 
