@@ -1,0 +1,400 @@
+/* === VALENTINO FRAMEWORK BASE (Universal) ===
+ * Surface remaps, rhythm profiles, typography, grid, utilities.
+ * This file is framework-agnostic: no site-specific colors, logos, or layouts.
+ * Source of truth: valentino-engine (will move to npm package in v2.5.0).
+ */
+
+/* --- Resets & Baselines --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-deep-void);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Valentino Section Shell --- */
+.valentino-section-shell {
+    position: relative;
+    padding: var(--valentino-rhythm-shell-padding, clamp(2.5rem, 4vw, 4.5rem)) 0;
+    background: var(--valentino-surface-bg, #ffffff);
+    color: var(--valentino-surface-text, #0f172a);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-feature);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-feature);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-block-m);
+}
+
+.valentino-section-shell[data-height='screen-sm'] {
+    min-height: min(62svh, 720px);
+}
+
+.valentino-section-shell[data-height='screen-md'] {
+    min-height: min(78svh, 920px);
+}
+
+.valentino-section-shell[data-height='screen-full'] {
+    min-height: calc(100svh - 92px);
+}
+
+/* --- Surface Variants --- */
+.valentino-section-shell[data-surface='default'] {
+    --valentino-surface-bg: var(--valentino-surface-default-background);
+    --valentino-surface-text: var(--valentino-surface-default-text);
+    --valentino-surface-muted: var(--valentino-surface-default-text-muted);
+    --valentino-card-bg: var(--valentino-surface-default-card-bg);
+    --valentino-card-border: var(--valentino-surface-default-card-border);
+    /* Light-surface remaps: dark-themed tokens accessible on white */
+    --text-primary: #0f172a;
+    --text-secondary: var(--valentino-surface-default-text-muted);
+    --text-sovereign-gold: #92400e;
+    --accent-neural-cyan: #0b6a82;
+    --rgb-neural-cyan: 14, 116, 144;
+    --accent-violet: #6d28d9;
+    --rgb-violet: 109, 40, 217;
+    --code-gold: #92400e;
+    --code-cyan: #0b6a82;
+}
+
+.valentino-section-shell[data-surface='muted'] {
+    --valentino-surface-bg: var(--valentino-surface-muted-background);
+    --valentino-surface-text: var(--valentino-surface-muted-text);
+    --valentino-surface-muted: var(--valentino-surface-muted-text-muted);
+    --valentino-card-bg: var(--valentino-surface-muted-card-bg);
+    --valentino-card-border: var(--valentino-surface-muted-card-border);
+    --text-primary: #0f172a;
+    --text-secondary: var(--valentino-surface-muted-text-muted);
+    --text-sovereign-gold: #92400e;
+    --accent-neural-cyan: #0b6a82;
+    --rgb-neural-cyan: 14, 116, 144;
+    --accent-violet: #6d28d9;
+    --rgb-violet: 109, 40, 217;
+    --code-gold: #92400e;
+    --code-cyan: #0b6a82;
+}
+
+.valentino-section-shell[data-surface='accent'] {
+    --valentino-surface-bg: var(--valentino-surface-accent-background);
+    --valentino-surface-text: var(--valentino-surface-accent-text);
+    --valentino-surface-muted: var(--valentino-surface-accent-text-muted);
+    --valentino-card-bg: var(--valentino-surface-accent-card-bg);
+    --valentino-card-border: var(--valentino-surface-accent-card-border);
+    --text-primary: #1f2937;
+    --text-secondary: var(--valentino-surface-accent-text-muted);
+    --text-sovereign-gold: #92400e;
+    --accent-neural-cyan: #0b6a82;
+    --rgb-neural-cyan: 14, 116, 144;
+    --accent-violet: #6d28d9;
+    --rgb-violet: 109, 40, 217;
+    --code-gold: #92400e;
+    --code-cyan: #0b6a82;
+}
+
+.valentino-section-shell[data-surface='dark'] {
+    --valentino-surface-bg: var(--valentino-surface-dark-background);
+    --valentino-surface-text: var(--valentino-surface-dark-text);
+    --valentino-surface-muted: var(--valentino-surface-dark-text-muted);
+    --valentino-card-bg: var(--valentino-surface-dark-card-bg);
+    --valentino-card-border: var(--valentino-surface-dark-card-border);
+}
+
+.valentino-section-shell[data-surface='shell-dark'] {
+    --valentino-surface-bg: var(--valentino-surface-shell-dark-background);
+    --valentino-surface-text: var(--valentino-surface-shell-dark-text);
+    --valentino-surface-muted: var(--valentino-surface-shell-dark-text-muted);
+    --valentino-card-bg: var(--valentino-surface-shell-dark-card-bg);
+    --valentino-card-border: var(--valentino-surface-shell-dark-card-border);
+}
+
+.valentino-section-shell[data-surface='reading-light'] {
+    --valentino-surface-bg: var(--valentino-surface-reading-light-background);
+    --valentino-surface-text: var(--valentino-surface-reading-light-text);
+    --valentino-surface-muted: var(--valentino-surface-reading-light-text-muted);
+    --valentino-card-bg: var(--valentino-surface-reading-light-card-bg);
+    --valentino-card-border: var(--valentino-surface-reading-light-card-border);
+    --text-primary: #0f172a;
+    --text-secondary: var(--valentino-surface-reading-light-text-muted);
+    --text-sovereign-gold: #92400e;
+    --accent-neural-cyan: #0b6a82;
+    --rgb-neural-cyan: 14, 116, 144;
+    --accent-violet: #6d28d9;
+    --rgb-violet: 109, 40, 217;
+    --code-gold: #92400e;
+    --code-cyan: #0b6a82;
+}
+
+.valentino-section-shell[data-surface='ops-light'] {
+    --valentino-surface-bg: var(--valentino-surface-ops-light-background);
+    --valentino-surface-text: var(--valentino-surface-ops-light-text);
+    --valentino-surface-muted: var(--valentino-surface-ops-light-text-muted);
+    --valentino-card-bg: var(--valentino-surface-ops-light-card-bg);
+    --valentino-card-border: var(--valentino-surface-ops-light-card-border);
+    --text-primary: #0f172a;
+    --text-secondary: var(--valentino-surface-ops-light-text-muted);
+    --text-sovereign-gold: #92400e;
+    --accent-neural-cyan: #0b6a82;
+    --rgb-neural-cyan: 14, 116, 144;
+    --accent-violet: #6d28d9;
+    --rgb-violet: 109, 40, 217;
+    --code-gold: #92400e;
+    --code-cyan: #0b6a82;
+}
+
+/* --- Rhythm Profiles --- */
+.valentino-section-shell[data-rhythm-profile='hero'] {
+    --valentino-rhythm-shell-padding: var(--valentino-rhythm-space-block-xl);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-support);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-compact);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-block-l);
+}
+
+.valentino-section-shell[data-rhythm-profile='transition'] {
+    --valentino-rhythm-shell-padding: var(--valentino-rhythm-space-block-l);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-support);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-compact);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-block-m);
+}
+
+.valentino-section-shell[data-rhythm-profile='feature'],
+.valentino-section-shell[data-rhythm-profile='proof'] {
+    --valentino-rhythm-shell-padding: var(--valentino-rhythm-space-block-l);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-feature);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-support);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-block-m);
+}
+
+.valentino-section-shell[data-rhythm-profile='metrics'] {
+    --valentino-rhythm-shell-padding: var(--valentino-rhythm-space-block-m);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-compact);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-compact);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-stack-l);
+}
+
+.valentino-section-shell[data-rhythm-profile='reading'] {
+    --valentino-rhythm-shell-padding: var(--valentino-rhythm-space-block-xl);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-reading);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-support);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-block-l);
+}
+
+.valentino-section-shell[data-rhythm-profile='ops'] {
+    --valentino-rhythm-shell-padding: var(--valentino-rhythm-space-block-m);
+    --valentino-rhythm-body-measure: var(--valentino-rhythm-measure-ops);
+    --valentino-rhythm-header-measure: var(--valentino-rhythm-measure-support);
+    --valentino-rhythm-cluster-gap: var(--valentino-rhythm-space-stack-l);
+}
+
+/* --- Surface Utility Cascade (generic selectors only) --- */
+.valentino-section-shell h1,
+.valentino-section-shell h2,
+.valentino-section-shell h3,
+.valentino-section-shell h4 {
+    color: var(--valentino-surface-text);
+}
+
+.valentino-section-shell p {
+    color: var(--valentino-surface-muted);
+}
+
+/* --- Runtime Loading Guard --- */
+body.runtime-loading #page-root {
+    min-height: 80vh;
+}
+
+body.runtime-loading #page-root::after {
+    content: '';
+    display: block;
+    height: 160px;
+    margin: 2rem auto 0;
+    max-width: 900px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, rgba(15, 30, 45, 0.4), rgba(15, 30, 45, 0.1), rgba(15, 30, 45, 0.4));
+    background-size: 200% 100%;
+    animation: runtime-sheen 1.4s ease-in-out infinite;
+    opacity: 0.6;
+}
+
+body.runtime-loading sovereign-footer {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@keyframes runtime-sheen {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 200% 50%;
+    }
+}
+
+/* --- Typography Scale (Fluid) --- */
+.h1 {
+    font-size: var(--text-step-5);
+    line-height: var(--valentino-rhythm-leading-display, 1.1);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.h2 {
+    font-size: var(--text-step-4);
+    line-height: var(--valentino-rhythm-leading-display, 1.15);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.h3 {
+    font-size: var(--text-step-3);
+    line-height: var(--valentino-rhythm-leading-display, 1.2);
+    font-weight: 600;
+}
+
+.h4 {
+    font-size: var(--text-step-2);
+    line-height: var(--valentino-rhythm-leading-display, 1.3);
+    font-weight: 600;
+}
+
+.h5 {
+    font-size: var(--text-step-1);
+    line-height: var(--valentino-rhythm-leading-body, 1.4);
+    font-weight: 600;
+}
+
+.body-large {
+    font-size: var(--text-step-0);
+    line-height: var(--valentino-rhythm-leading-body, 1.6);
+}
+
+/* --- Utilities --- */
+.text-gold {
+    color: var(--text-sovereign-gold);
+}
+
+.text-cyan {
+    color: var(--accent-neural-cyan);
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, var(--text-sovereign-gold), var(--accent-neural-cyan), var(--accent-violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.text-violet {
+    color: var(--accent-violet);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* --- Button Base --- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1.5rem;
+    height: 48px;
+    min-width: 140px;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all var(--transition-ease);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+/* --- Animation Presets --- */
+.anim-ready { opacity: 0; transition: opacity 0.6s ease, transform 0.6s ease; }
+.anim-ready.anim-visible { opacity: 1; transform: none; }
+
+.anim-fade-up { transform: translateY(24px); }
+.anim-fade-in { transform: none; }
+.anim-slide-left { transform: translateX(40px); }
+.anim-slide-right { transform: translateX(-40px); }
+.anim-scale-in { transform: scale(0.95); }
+
+@media (prefers-reduced-motion: reduce) {
+    .anim-ready { opacity: 1; transform: none; transition: none; }
+}
+
+/* --- Grid System --- */
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    width: 100%;
+}
+
+.row.no-gap {
+    gap: 0;
+}
+
+.row.gap-sm {
+    gap: 0.5rem;
+}
+
+.row.gap-lg {
+    gap: 2rem;
+}
+
+.col-12 { flex: 0 0 100%; max-width: 100%; }
+.col-11 { flex: 0 0 calc(91.666% - 0.917rem); max-width: calc(91.666% - 0.917rem); }
+.col-10 { flex: 0 0 calc(83.333% - 0.833rem); max-width: calc(83.333% - 0.833rem); }
+.col-9  { flex: 0 0 calc(75% - 0.75rem); max-width: calc(75% - 0.75rem); }
+.col-8  { flex: 0 0 calc(66.666% - 0.667rem); max-width: calc(66.666% - 0.667rem); }
+.col-7  { flex: 0 0 calc(58.333% - 0.583rem); max-width: calc(58.333% - 0.583rem); }
+.col-6  { flex: 0 0 calc(50% - 0.5rem); max-width: calc(50% - 0.5rem); }
+.col-5  { flex: 0 0 calc(41.666% - 0.417rem); max-width: calc(41.666% - 0.417rem); }
+.col-4  { flex: 0 0 calc(33.333% - 0.667rem); max-width: calc(33.333% - 0.667rem); }
+.col-3  { flex: 0 0 calc(25% - 0.75rem); max-width: calc(25% - 0.75rem); }
+.col-2  { flex: 0 0 calc(16.666% - 0.833rem); max-width: calc(16.666% - 0.833rem); }
+.col-1  { flex: 0 0 calc(8.333% - 0.917rem); max-width: calc(8.333% - 0.917rem); }
+
+.col-auto {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+@media (max-width: 768px) {
+    .col-6, .col-4, .col-3, .col-2, .col-1,
+    .col-5, .col-7, .col-8, .col-9, .col-10, .col-11 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .col-md-6 {
+        flex: 0 0 calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+    }
+
+    .col-md-4 {
+        flex: 0 0 calc(33.333% - 0.667rem);
+        max-width: calc(33.333% - 0.667rem);
+    }
+
+    .col-md-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 500px) {
+    .col-md-6, .col-md-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}

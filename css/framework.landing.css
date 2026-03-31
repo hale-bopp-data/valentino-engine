@@ -1,0 +1,281 @@
+/* === VALENTINO TEMPLATE: Landing Page ===
+ * Single-scroll conversion funnel: hero → problem → solution → social proof → CTA.
+ * Import after framework.base.css.
+ * Usage: @import '@hale-bopp/valentino-engine/css/framework.landing.css';
+ */
+
+/* --- Full-Screen Hero --- */
+.landing-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: calc(100svh - 80px);
+    padding: 2rem;
+}
+
+.landing-hero__headline {
+    max-width: 18ch;
+    font-size: var(--text-step-5, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--valentino-surface-text);
+}
+
+.landing-hero__sub {
+    max-width: 42ch;
+    margin-top: 1.25rem;
+    font-size: var(--text-step-1, 1.25rem);
+    line-height: 1.5;
+    color: var(--valentino-surface-muted);
+}
+
+.landing-hero__cta {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* --- Problem / Pain Points --- */
+.pain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--valentino-rhythm-cluster-gap, 1.5rem);
+    text-align: center;
+}
+
+.pain-card {
+    padding: 2rem 1.5rem;
+}
+
+.pain-card__icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.pain-card__title {
+    font-size: var(--text-step-1, 1.125rem);
+    font-weight: 700;
+    color: var(--valentino-surface-text);
+    margin-bottom: 0.5rem;
+}
+
+.pain-card__desc {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--valentino-surface-muted);
+}
+
+/* --- Solution (Split Layout) --- */
+.split-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
+}
+
+.split-section--reverse {
+    direction: rtl;
+}
+
+.split-section--reverse > * {
+    direction: ltr;
+}
+
+.split-section__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.split-section__title {
+    font-size: var(--text-step-3, 1.75rem);
+    font-weight: 700;
+    color: var(--valentino-surface-text);
+}
+
+.split-section__desc {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--valentino-surface-muted);
+}
+
+.split-section__visual {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.split-section__visual img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* --- Social Proof --- */
+.testimonial-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--valentino-rhythm-cluster-gap, 1.5rem);
+}
+
+.testimonial-card {
+    background: var(--valentino-card-bg, #ffffff);
+    border: 1px solid var(--valentino-card-border, rgba(148, 163, 184, 0.2));
+    border-radius: 12px;
+    padding: 2rem;
+}
+
+.testimonial-card__quote {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--valentino-surface-text);
+    font-style: italic;
+    margin-bottom: 1.25rem;
+}
+
+.testimonial-card__quote::before {
+    content: '\201C';
+    font-size: 2rem;
+    line-height: 0;
+    vertical-align: -0.4em;
+    margin-right: 0.15em;
+    color: var(--accent-neural-cyan, #0ea5e9);
+    font-style: normal;
+}
+
+.testimonial-card__author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.testimonial-card__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.testimonial-card__name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--valentino-surface-text);
+}
+
+.testimonial-card__title {
+    font-size: 0.8rem;
+    color: var(--valentino-surface-muted);
+}
+
+/* --- Logos Bar --- */
+.logos-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2.5rem;
+    opacity: 0.6;
+}
+
+.logos-bar img {
+    height: 32px;
+    width: auto;
+    filter: grayscale(1);
+    transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.logos-bar img:hover {
+    filter: grayscale(0);
+    opacity: 1;
+}
+
+/* --- Stats Row --- */
+.stats-row {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3rem;
+    text-align: center;
+}
+
+.stat-item__value {
+    font-size: var(--text-step-4, 2.5rem);
+    font-weight: 800;
+    color: var(--valentino-surface-text);
+    line-height: 1;
+}
+
+.stat-item__label {
+    font-size: 0.9rem;
+    color: var(--valentino-surface-muted);
+    margin-top: 0.35rem;
+}
+
+/* --- Final CTA (Full-Width) --- */
+.final-cta {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.final-cta__title {
+    font-size: var(--text-step-4, 2.5rem);
+    font-weight: 800;
+    color: var(--valentino-surface-text);
+    max-width: 20ch;
+    margin: 0 auto;
+}
+
+.final-cta__desc {
+    font-size: var(--text-step-0, 1rem);
+    color: var(--valentino-surface-muted);
+    margin: 1rem auto 2rem;
+    max-width: 48ch;
+    line-height: 1.6;
+}
+
+.final-cta__actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* --- Responsive (Landing) --- */
+@media (max-width: 768px) {
+    .split-section {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .split-section--reverse {
+        direction: ltr;
+    }
+
+    .stats-row {
+        gap: 2rem;
+    }
+}
+
+@media (max-width: 500px) {
+    .landing-hero {
+        min-height: auto;
+        padding: 3rem 1.5rem;
+    }
+
+    .landing-hero__cta {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .logos-bar {
+        gap: 1.5rem;
+    }
+
+    .logos-bar img {
+        height: 24px;
+    }
+}
