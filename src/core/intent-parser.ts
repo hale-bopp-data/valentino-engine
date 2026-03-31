@@ -449,8 +449,9 @@ function buildLlmPrompt(input: string, spec: PageSpecV1): string {
         '- Return ONLY valid JSON matching CockpitAction schema',
         '- For queries use: { "action": "query", "query": { "type": "..." } }',
         '- For mutations use the appropriate action type',
-        '- Section indices are 0-based',
+        '- Section indices are 0-based and MUST be valid numbers within the sections array',
         '- If the request is ambiguous, prefer a query over a mutation',
+        '- If the request is conversational, informational, or a general question (e.g. "mi parli di...", "cos\'è...", "tell me about..."), return: { "action": "query", "query": { "type": "describe-page" } }',
         '- If you cannot parse the request, return: { "action": "query", "query": { "type": "describe-page" } }',
         '',
         'Return ONLY valid JSON, no markdown fences, no explanation.',
@@ -496,6 +497,24 @@ async function parseWithLlm(
 
         if (typeof parsed === 'object' && parsed !== null && 'action' in parsed) {
             const action = parsed as CockpitAction;
+
+            // Validate LLM-returned actions have required fields with correct types
+            if (action.action === 'edit-section' || action.action === 'remove-section') {
+                const a = action as { sectionIndex?: unknown };
+                if (typeof a.sectionIndex !== 'number' || !Number.isInteger(a.sectionIndex)
+                    || a.sectionIndex < 0 || a.sectionIndex >= spec.sections.length) {
+                    const local = parseLocal(input, spec);
+                    return { ...local, mode: 'llm', fallbackReason: `LLM returned invalid sectionIndex: ${a.sectionIndex}` };
+                }
+            }
+            if (action.action === 'move-section') {
+                const a = action as { fromIndex?: unknown; toIndex?: unknown };
+                if (typeof a.fromIndex !== 'number' || typeof a.toIndex !== 'number') {
+                    const local = parseLocal(input, spec);
+                    return { ...local, mode: 'llm', fallbackReason: 'LLM returned invalid move indices' };
+                }
+            }
+
             return {
                 intent: {
                     action,
