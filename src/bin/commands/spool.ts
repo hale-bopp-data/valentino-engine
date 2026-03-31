@@ -1,22 +1,29 @@
 /**
- * valentino spool <directory> [--out <file>]
+ * valentino spool <source> [--out <file>]
  *
  * Analyze an existing site's CSS and generate Valentino-compatible custom tokens.
+ * Source can be a local directory or a URL (http/https).
  * 80% automatic extraction, 20% operator refinement.
  */
 
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { spool } from '../../core/spool.js';
+import { spool, spoolFromUrl } from '../../core/spool.js';
+import type { SpoolOutput } from '../../core/spool.js';
+
+function isUrl(input: string): boolean {
+  return input.startsWith('http://') || input.startsWith('https://');
+}
 
 export function runSpool(args: string[]): void {
   if (!args[0]) {
-    console.error('Usage: valentino spool <directory> [--out <file>]');
-    console.error('  Analyzes CSS in <directory> and generates custom-tokens.css');
+    console.error('Usage: valentino spool <source> [--out <file>]');
+    console.error('  <source> can be a local directory or a URL (http/https)');
+    console.error('  Analyzes CSS and generates custom-tokens.css');
     process.exit(1);
   }
 
-  const dir = args[0];
+  const source = args[0];
   let outFile: string | null = null;
 
   for (let i = 1; i < args.length; i++) {
@@ -25,11 +32,28 @@ export function runSpool(args: string[]): void {
     }
   }
 
-  console.log(`\n🧵 Valentino Spool — analyzing ${dir}...\n`);
+  console.log(`\n🧵 Valentino Spool — analyzing ${source}...\n`);
 
-  try {
-    const result = spool(dir);
+  const run = async () => {
+    let result: SpoolOutput;
+    if (isUrl(source)) {
+      result = await spoolFromUrl(source);
+    } else {
+      result = spool(source);
+    }
+    return result;
+  };
+
+  run().then((result) => {
     const a = result.analysis;
+    printReport(a, result, outFile);
+  }).catch((err) => {
+    console.error(`  ✗ ${(err as Error).message}`);
+    process.exit(1);
+  });
+}
+
+function printReport(a: SpoolOutput['analysis'], result: SpoolOutput, outFile: string | null): void {
 
     // Report
     console.log(`  Files:    ${a.cssFiles.length} CSS files, ${a.totalLines} lines`);
@@ -74,9 +98,4 @@ Next steps:
   3. Run: valentino theme-audit custom-tokens.css — to verify contrast
   4. Run: valentino audit your-styles.css — to check guardrails
 `);
-
-  } catch (err) {
-    console.error(`  ✗ ${(err as Error).message}`);
-    process.exit(1);
-  }
 }

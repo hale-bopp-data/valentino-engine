@@ -70,12 +70,25 @@ function extractColorsFromCss(css: string): Map<string, { rgb: [number, number, 
   return map;
 }
 
+/** HSV saturation (0-1) from RGB. Low saturation = gray, not accent. */
+function rgbSaturation(rgb: [number, number, number]): number {
+  const [r, g, b] = rgb.map(c => c / 255);
+  const max = Math.max(r, g, b);
+  if (max === 0) return 0;
+  const min = Math.min(r, g, b);
+  return (max - min) / max;
+}
+
+const MIN_ACCENT_SATURATION = 0.15;
+
 function inferColorRole(rgb: [number, number, number], lum: number): ExtractedColor['role'] {
   if (lum < 0.05) return 'background';  // very dark → likely bg
   if (lum > 0.85) return 'background';  // very light → likely bg
   if (lum < 0.15) return 'text';        // dark → likely text
   if (lum > 0.7) return 'text';         // light text on dark bg
-  return 'accent';                       // mid-range → accent/border
+  // mid-range: accent only if saturated enough, otherwise border/gray
+  if (rgbSaturation(rgb) < MIN_ACCENT_SATURATION) return 'border';
+  return 'accent';
 }
 
 // --- Pattern detection ---
@@ -155,12 +168,57 @@ function generateCustomTokens(analysis: SpoolAnalysis): string {
   return lines.join('\n');
 }
 
-// --- Main spool function ---
+// --- Shared analysis pipeline ---
+
+function analyzeCss(source: string, fileNames: string[], allCss: string, totalLines: number): SpoolOutput {
+  const colorMap = extractColorsFromCss(allCss);
+  const colors: ExtractedColor[] = [];
+  for (const [value, { rgb, count }] of colorMap) {
+    const lum = relativeLuminance(rgb[0], rgb[1], rgb[2]);
+    colors.push({ value, rgb, luminance: lum, count, role: inferColorRole(rgb, lum) });
+  }
+  colors.sort((a, b) => b.count - a.count);
+
+  const backgrounds = colors.filter(c => c.role === 'background');
+  const texts = colors.filter(c => c.role === 'text');
+  const accents = colors.filter(c => c.role === 'accent');
+
+  const darkestBg = backgrounds.length > 0
+    ? backgrounds.reduce((a, b) => a.luminance < b.luminance ? a : b)
+    : null;
+  const lightestBg = backgrounds.length > 0
+    ? backgrounds.reduce((a, b) => a.luminance > b.luminance ? a : b)
+    : null;
+  const primaryText = texts.length > 0
+    ? texts.reduce((a, b) => b.count > a.count ? b : a)
+    : null;
+
+  const patterns = detectPatterns(allCss);
+
+  const analysis: SpoolAnalysis = {
+    sourceDir: source,
+    cssFiles: fileNames,
+    totalLines,
+    colors: colors.slice(0, 20),
+    darkestBg,
+    lightestBg,
+    primaryText,
+    accents: accents.slice(0, 5),
+    suggestedTemplate: suggestTemplate(patterns),
+    sectionCount: patterns.sectionCount,
+    hasHero: patterns.hasHero,
+    hasGrid: patterns.hasGrid,
+    hasForm: patterns.hasForm,
+  };
+
+  return { analysis, customTokensCss: generateCustomTokens(analysis) };
+}
+
+// --- Main spool function (directory) ---
 
 export function spool(dir: string): SpoolOutput {
   const absDir = resolve(dir);
 
-  // Find CSS files
   const cssFiles: string[] = [];
   const walkDir = (d: string) => {
     for (const entry of readdirSync(d)) {
@@ -177,7 +235,6 @@ export function spool(dir: string): SpoolOutput {
     throw new Error(`No CSS files found in ${absDir}`);
   }
 
-  // Read and merge all CSS
   let totalLines = 0;
   let allCss = '';
   for (const file of cssFiles) {
@@ -186,51 +243,74 @@ export function spool(dir: string): SpoolOutput {
     allCss += content + '\n';
   }
 
-  // Extract colors
-  const colorMap = extractColorsFromCss(allCss);
-  const colors: ExtractedColor[] = [];
-  for (const [value, { rgb, count }] of colorMap) {
-    const lum = relativeLuminance(rgb[0], rgb[1], rgb[2]);
-    colors.push({ value, rgb, luminance: lum, count, role: inferColorRole(rgb, lum) });
+  const fileNames = cssFiles.map(f => f.replace(absDir + '/', '').replace(absDir + '\\', ''));
+  return analyzeCss(absDir, fileNames, allCss, totalLines);
+}
+
+// --- URL spool function ---
+
+const LINK_CSS_RE = /<link[^>]+rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
+const LINK_CSS_RE2 = /<link[^>]+href=["']([^"']+)["'][^>]*rel=["']stylesheet["'][^>]*>/gi;
+const STYLE_RE = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+
+function resolveUrl(base: string, href: string): string {
+  try {
+    return new URL(href, base).href;
+  } catch {
+    return href;
   }
-  colors.sort((a, b) => b.count - a.count);
+}
 
-  // Classify
-  const backgrounds = colors.filter(c => c.role === 'background');
-  const texts = colors.filter(c => c.role === 'text');
-  const accents = colors.filter(c => c.role === 'accent');
+export async function spoolFromUrl(url: string): Promise<SpoolOutput> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status} ${res.statusText}`);
+  const html = await res.text();
 
-  const darkestBg = backgrounds.length > 0
-    ? backgrounds.reduce((a, b) => a.luminance < b.luminance ? a : b)
-    : null;
-  const lightestBg = backgrounds.length > 0
-    ? backgrounds.reduce((a, b) => a.luminance > b.luminance ? a : b)
-    : null;
-  const primaryText = texts.length > 0
-    ? texts.reduce((a, b) => b.count > a.count ? b : a)
-    : null;
+  // Extract inline <style> blocks
+  const cssChunks: { name: string; css: string }[] = [];
+  let styleIdx = 0;
+  for (const match of html.matchAll(STYLE_RE)) {
+    cssChunks.push({ name: `<style#${styleIdx++}>`, css: match[1] });
+  }
 
-  // Detect patterns
-  const patterns = detectPatterns(allCss);
+  // Extract <link rel="stylesheet"> hrefs
+  const cssUrls = new Set<string>();
+  for (const re of [LINK_CSS_RE, LINK_CSS_RE2]) {
+    for (const match of html.matchAll(re)) {
+      cssUrls.add(resolveUrl(url, match[1]));
+    }
+  }
 
-  const analysis: SpoolAnalysis = {
-    sourceDir: absDir,
-    cssFiles: cssFiles.map(f => f.replace(absDir + '/', '').replace(absDir + '\\', '')),
-    totalLines,
-    colors: colors.slice(0, 20), // top 20
-    darkestBg,
-    lightestBg,
-    primaryText,
-    accents: accents.slice(0, 5), // top 5 accents
-    suggestedTemplate: suggestTemplate(patterns),
-    sectionCount: patterns.sectionCount,
-    hasHero: patterns.hasHero,
-    hasGrid: patterns.hasGrid,
-    hasForm: patterns.hasForm,
-  };
+  // Fetch external stylesheets (parallel, best-effort)
+  const fetches = [...cssUrls].map(async (cssUrl) => {
+    try {
+      const r = await fetch(cssUrl);
+      if (!r.ok) return null;
+      const css = await r.text();
+      const name = new URL(cssUrl).pathname.split('/').pop() || cssUrl;
+      return { name, css };
+    } catch {
+      return null;
+    }
+  });
+  const results = await Promise.all(fetches);
+  for (const r of results) {
+    if (r) cssChunks.push(r);
+  }
 
-  return {
-    analysis,
-    customTokensCss: generateCustomTokens(analysis),
-  };
+  if (cssChunks.length === 0) {
+    throw new Error(`No CSS found at ${url} (no <style> blocks or <link rel="stylesheet"> tags)`);
+  }
+
+  let totalLines = 0;
+  let allCss = '';
+  for (const chunk of cssChunks) {
+    totalLines += chunk.css.split('\n').length;
+    allCss += chunk.css + '\n';
+  }
+
+  // Also analyze the HTML itself for pattern detection (sections, hero, grid, etc.)
+  allCss += '\n' + html;
+
+  return analyzeCss(url, cssChunks.map(c => c.name), allCss, totalLines);
 }
