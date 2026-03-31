@@ -15,6 +15,7 @@ import { runInit } from './commands/init.js';
 import { runLlms } from './commands/llms.js';
 import { runCockpit } from './commands/cockpit.js';
 import { runThemeAudit } from './commands/theme-audit.js';
+import { runSpool } from './commands/spool.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -71,6 +72,10 @@ switch (command) {
         runThemeAudit(args);
         break;
 
+    case 'spool':
+        runSpool(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
@@ -91,6 +96,7 @@ Usage:
   valentino cockpit <spec.json> --parse "text"                 Parse intent (dry run)
   valentino cockpit --schema <page|action|section [type]>      Print JSON Schema
   valentino theme-audit <pack.json> [--registry r.json] [--level AA|AAA]  Audit theme-pack contrast on surfaces
+  valentino spool <directory> [--out <file>]                          Analyze site CSS → Valentino tokens
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
