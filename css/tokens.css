@@ -1,0 +1,142 @@
+/* === VALENTINO TOKENS ===
+ * Il DNA di Valentino. Questi sono i valori che l'engine ritiene corretti.
+ * Sovrascrivili nel tuo theme.css per adattare i colori al tuo brand,
+ * ma la struttura (7 superfici, rhythm contract, scale) è non negoziabile.
+ *
+ * Chi usa Valentino accetta questo contratto:
+ *   7 superfici   → default, muted, accent, dark, shell-dark, reading-light, ops-light
+ *   Rhythm        → block spacing (xl/l/m), stack spacing, leading, measure
+ *   Typography    → 6 step fluid scale
+ *   3 accent slot → gold, cyan, violet (rinomina come vuoi, ma servono 3)
+ */
+
+:root {
+    /* --- Palette --- */
+    --bg-deep-void: #050812;
+    --rgb-deep-void: 5, 8, 18;
+    --bg-surface: #0a1125;
+    --rgb-surface: 10, 17, 37;
+
+    /* Text hierarchy */
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #64748b;
+
+    /* 3 accent slot (sovrascrivili per il tuo brand) */
+    --text-sovereign-gold: #f5d586;
+    --rgb-sovereign-gold: 245, 213, 134;
+    --accent-neural-cyan: #0cd6c7;
+    --rgb-neural-cyan: 12, 214, 199;
+    --accent-violet: #8c52ff;
+    --rgb-violet: 140, 82, 255;
+
+    /* Semantic status */
+    --status-success: #16a34a;
+    --status-danger: #dc2626;
+    --status-warning: #d97706;
+
+    /* Borders & glass */
+    --border-color: rgba(var(--rgb-neural-cyan), 0.15);
+    --glass-border: rgba(var(--rgb-neural-cyan), 0.25);
+    --glass-border-glow: rgba(var(--rgb-neural-cyan), 0.6);
+    --glass-bg: linear-gradient(135deg, rgba(var(--rgb-neural-cyan), 0.08) 0%, rgba(var(--rgb-violet), 0.08) 100%);
+
+    /* Code */
+    --code-gold: #c8aa6e;
+    --code-cyan: #0ac8b9;
+
+    /* --- Valentino Surfaces (7 × 5 — il contratto) --- */
+
+    /* default: bianco pulito */
+    --valentino-surface-default-background: #ffffff;
+    --valentino-surface-default-text: #0f172a;
+    --valentino-surface-default-text-muted: #475569;
+    --valentino-surface-default-card-bg: rgba(255, 255, 255, 0.96);
+    --valentino-surface-default-card-border: rgba(203, 213, 225, 0.95);
+
+    /* muted: grigio sottile */
+    --valentino-surface-muted-background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    --valentino-surface-muted-text: #0f172a;
+    --valentino-surface-muted-text-muted: #475569;
+    --valentino-surface-muted-card-bg: rgba(255, 255, 255, 0.9);
+    --valentino-surface-muted-card-border: rgba(191, 219, 254, 0.65);
+
+    /* accent: calore e attenzione */
+    --valentino-surface-accent-background:
+        radial-gradient(circle at top left, rgba(244, 63, 94, 0.18), transparent 32%),
+        radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 28%),
+        linear-gradient(180deg, #fff7fb 0%, #fff1f2 100%);
+    --valentino-surface-accent-text: #1f2937;
+    --valentino-surface-accent-text-muted: #4b5563;
+    --valentino-surface-accent-card-bg: rgba(255, 255, 255, 0.88);
+    --valentino-surface-accent-card-border: rgba(251, 113, 133, 0.28);
+
+    /* dark: profondità */
+    --valentino-surface-dark-background:
+        radial-gradient(circle at 50% 0%, rgba(244, 63, 94, 0.24), transparent 36%),
+        linear-gradient(180deg, #020617 0%, #0f172a 100%);
+    --valentino-surface-dark-text: #f8fafc;
+    --valentino-surface-dark-text-muted: rgba(226, 232, 240, 0.82);
+    --valentino-surface-dark-card-bg: rgba(15, 23, 42, 0.74);
+    --valentino-surface-dark-card-border: rgba(100, 116, 139, 0.35);
+
+    /* shell-dark: eredita dark */
+    --valentino-surface-shell-dark-background: var(--valentino-surface-dark-background);
+    --valentino-surface-shell-dark-text: var(--valentino-surface-dark-text);
+    --valentino-surface-shell-dark-text-muted: var(--valentino-surface-dark-text-muted);
+    --valentino-surface-shell-dark-card-bg: var(--valentino-surface-dark-card-bg);
+    --valentino-surface-shell-dark-card-border: var(--valentino-surface-dark-card-border);
+
+    /* reading-light: ottimizzato per testo lungo */
+    --valentino-surface-reading-light-background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    --valentino-surface-reading-light-text: #0f172a;
+    --valentino-surface-reading-light-text-muted: #334155;
+    --valentino-surface-reading-light-card-bg: rgba(255, 255, 255, 0.98);
+    --valentino-surface-reading-light-card-border: rgba(203, 213, 225, 0.88);
+
+    /* ops-light: dashboard / backoffice */
+    --valentino-surface-ops-light-background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    --valentino-surface-ops-light-text: #0f172a;
+    --valentino-surface-ops-light-text-muted: #475569;
+    --valentino-surface-ops-light-card-bg: rgba(255, 255, 255, 0.94);
+    --valentino-surface-ops-light-card-border: rgba(148, 163, 184, 0.3);
+
+    /* --- Rhythm Contract (non negoziabile) --- */
+    --valentino-rhythm-space-block-xl: clamp(4.5rem, 7vw, 7rem);
+    --valentino-rhythm-space-block-l: clamp(3.5rem, 5vw, 5.5rem);
+    --valentino-rhythm-space-block-m: clamp(2.75rem, 4vw, 4rem);
+    --valentino-rhythm-space-stack-m: 1rem;
+    --valentino-rhythm-space-stack-l: 1.5rem;
+    --valentino-rhythm-leading-display: 1.05;
+    --valentino-rhythm-leading-body: 1.7;
+    --valentino-rhythm-measure-reading: 68ch;
+    --valentino-rhythm-measure-support: 42rem;
+    --valentino-rhythm-measure-feature: 46rem;
+    --valentino-rhythm-measure-ops: 52rem;
+    --valentino-rhythm-measure-compact: 34rem;
+
+    /* --- Elevation --- */
+    --z-ground: 0;
+    --z-raised: 10;
+    --z-sticky: 100;
+    --z-modal: 9000;
+    --z-toast: 9500;
+    --z-overlord: 10000;
+
+    /* --- Typography --- */
+    --font-family: 'Inter', 'Outfit', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'Fira Code', 'Courier New', monospace;
+
+    /* Fluid scale */
+    --text-step-0: clamp(1rem, 0.95vw + 0.8rem, 1.125rem);
+    --text-step-1: clamp(1.2rem, 1.5vw + 0.9rem, 1.5rem);
+    --text-step-2: clamp(1.44rem, 2.2vw + 1rem, 2rem);
+    --text-step-3: clamp(1.728rem, 3.2vw + 1.1rem, 2.66rem);
+    --text-step-4: clamp(2.074rem, 4.5vw + 1.2rem, 3.55rem);
+    --text-step-5: clamp(2.488rem, 6.2vw + 1.3rem, 4.75rem);
+
+    /* --- Animation Timing --- */
+    --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-ease: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
