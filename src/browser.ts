@@ -177,8 +177,13 @@ export type { VideoImportResult, VideoImportOptions, FrameData } from './core/vi
 export type { UrlImportResult, UrlImportOptions, HtmlLlmCallback } from './core/url-import.js';
 
 // OpenRouter Client (fetch-based)
-export { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
-export type { OpenRouterConfig } from './core/openrouter-client.js';
+export * from './core/providers/types.js';
+export { createOpenRouterCallback, testOpenRouterConnection } from './core/providers/openrouter.js';
+export type { OpenRouterConfig } from './core/providers/openrouter.js';
+export { createAzureOpenAICallback } from './core/providers/azure-openai.js';
+export type { AzureOpenAIConfig } from './core/providers/azure-openai.js';
+export { createOllamaCallback } from './core/providers/ollama.js';
+export type { OllamaConfig } from './core/providers/ollama.js';
 
 // Schema Export
 export {

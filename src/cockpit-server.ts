@@ -25,8 +25,8 @@ import {
 import { parseIntentLocal, parseIntent } from './core/intent-parser.js';
 import type { IntentLlmCallback } from './core/intent-parser.js';
 import { getPageSpecSchema, getCockpitActionSchema, getAllSectionSchemas } from './core/schema-export.js';
-import { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
-import type { OpenRouterConfig } from './core/openrouter-client.js';
+import { createOpenRouterCallback, testOpenRouterConnection } from './core/providers/openrouter.js';
+import type { OpenRouterConfig } from './core/providers/openrouter.js';
 import { importFromImage, createVisionCallback } from './core/visual-import.js';
 import { importFromUrl } from './core/url-import.js';
 import type { HtmlLlmCallback } from './core/url-import.js';

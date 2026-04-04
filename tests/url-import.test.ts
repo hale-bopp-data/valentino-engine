@@ -3,7 +3,7 @@
  * Feature #784, PBI #786.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { importFromUrl } from '../src/core/url-import.js';
 import type { VisionLlmCallback } from '../src/core/visual-import.js';
 import type { HtmlLlmCallback } from '../src/core/url-import.js';
@@ -82,6 +82,72 @@ describe('URL Import — HTML fallback', () => {
         expect(result).toHaveProperty('mode');
         expect(result).toHaveProperty('url');
         expect(result).toHaveProperty('warnings');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — Edge Cases & Mocks (PBI-003)
+// ---------------------------------------------------------------------------
+
+describe('URL Import — Network Edge Cases', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('handles 404 Not Found cleanly', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+        }));
+
+        const result = await importFromUrl('http://mock/404', mockVisionLlm, mockHtmlLlm, { id: 'test-404', forceHtmlFallback: true });
+        
+        expect(result.success).toBe(false);
+        expect(result.warnings[0]).toContain('404');
+    });
+
+    it('handles 429 Rate Limit cleanly', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: false,
+            status: 429,
+            statusText: 'Too Many Requests',
+        }));
+
+        const result = await importFromUrl('http://mock/429', mockVisionLlm, mockHtmlLlm, { id: 'test-429', forceHtmlFallback: true });
+        
+        expect(result.success).toBe(false);
+        expect(result.warnings[0]).toContain('429');
+    });
+
+    it('handles Network Exceptions (e.g. DNS failure/timeout)', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNRESET')));
+
+        const result = await importFromUrl('http://mock/timeout', mockVisionLlm, mockHtmlLlm, { id: 'test-timeout', forceHtmlFallback: true });
+
+        expect(result.success).toBe(false);
+        expect(result.warnings[0]).toContain('ECONNRESET');
+    });
+
+    it('truncates extremely large HTML payloads (>15000 chars) to save tokens', async () => {
+        const giantHtml = '<html><head><title>Giant</title></head><body>' + 'a'.repeat(20000) + '</body></html>';
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            text: async () => giantHtml,
+            status: 200,
+        }));
+
+        const spyHtmlLlm = vi.fn().mockResolvedValue(JSON.stringify({
+            version: '1', id: 'giant', sections: [{ type: 'hero', titleKey: 'ok', presentation: {} }]
+        }));
+
+        const result = await importFromUrl('http://mock/giant', mockVisionLlm, spyHtmlLlm as any, { id: 'test-giant', forceHtmlFallback: true });
+
+        expect(result.success).toBe(true);
+        expect(spyHtmlLlm).toHaveBeenCalled();
+        const userPromptArgument = spyHtmlLlm.mock.calls[0][1];
+        expect(userPromptArgument.length).toBeLessThan(giantHtml.length);
+        expect(userPromptArgument).toContain('<!-- truncated -->');
     });
 });
 

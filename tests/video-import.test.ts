@@ -121,17 +121,40 @@ describe('Video Import — Multi frame', () => {
     });
 });
 
-describe('Video Import — Error handling', () => {
+describe('Video Import — Error handling (PBI-003)', () => {
     it('returns empty for no frames', async () => {
         const result = await importFromVideo([], mockCompositionLlm, { id: 'empty' });
         expect(result.success).toBe(false);
         expect(result.frameCount).toBe(0);
     });
 
-    it('handles LLM error gracefully', async () => {
+    it('handles LLM Exception gracefully', async () => {
         const result = await importFromVideo(makeFrames(3), mockErrorLlm, { id: 'error-test' });
         expect(result.success).toBe(false);
-        expect(result.warnings.length).toBeGreaterThan(0);
+        expect(result.warnings[0]).toContain('Vision API down');
+    });
+
+    it('handles Rate Limit / Quota Exceeded mid-composition', async () => {
+        // MULTI_FRAME_SYSTEM_PROMPT starts with "You are Valentino's Video Import engine"
+        // FRAME_ANALYSIS_PROMPT starts with "Analyze this screenshot frame"
+        const ratelimitLlm: VisionLlmCallback = async (system) => {
+            if (system.startsWith("You are Valentino's Video Import engine")) {
+                throw new Error('429 Quota Exceeded');
+            }
+            // Frame-analysis calls — return valid partial data
+            return JSON.stringify({ sections: [{ type: 'hero' }] });
+        };
+        const result = await importFromVideo(makeFrames(3), ratelimitLlm, { id: 'ratelimit' });
+        expect(result.success).toBe(false);
+        expect(result.warnings[0]).toContain('Quota Exceeded');
+        expect(result.frameCount).toBe(3);
+    });
+
+    it('handles corrupted/invalid JSON from LLM', async () => {
+        const badJsonLlm: VisionLlmCallback = async () => 'Not a valid JSON payload at all';
+        const result = await importFromVideo(makeFrames(2), badJsonLlm, { id: 'badjson' });
+        expect(result.success).toBe(false);
+        expect(result.warnings[0]).toContain('invalid JSON for multi-frame composition');
     });
 });
 

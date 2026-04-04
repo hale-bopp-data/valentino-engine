@@ -29,7 +29,11 @@
     "./css/tokens.css": "./css/tokens.css",
     "./css/framework.base.css": "./css/framework.base.css",
     "./css/framework.corporate.css": "./css/framework.corporate.css",
-    "./css/framework.landing.css": "./css/framework.landing.css"
+    "./css/framework.landing.css": "./css/framework.landing.css",
+    "./visual-guardian": {
+      "types": "./dist/core/playwright-adapter.d.ts",
+      "import": "./dist/core/playwright-adapter.js"
+    }
   },
   "bin": {
     "valentino": "dist/bin/valentino.js"
@@ -81,6 +85,14 @@
     "tsx": "^4.19.0",
     "vitest": "^2.1.0",
     "@types/node": "^22.10.0"
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20.0.0"
