@@ -147,6 +147,57 @@ npx tsx src/bin/valentino.ts cockpit examples/minimal-site/pages/home.json
 | **Settings** | Configure OpenRouter API key and model from the UI |
 | **Live Preview** | See page sections update in real-time as you work |
 
+## Enterprise Readiness (v6 — 6th Dan)
+
+Valentino Engine v6 introduces enterprise-grade architecture for data-sovereign and zero-regression deployments.
+
+### Multi-Provider LLM Support
+
+```typescript
+import {
+  createOpenRouterCallback,   // Cloud — default
+  createAzureOpenAICallback,  // Enterprise — MS EA contracts
+  createOllamaCallback,       // Air-gapped — fully local
+} from '@hale-bopp/valentino-engine';
+
+// Swap providers without touching Cockpit logic
+const llm = createOllamaCallback({ model: 'llama3', baseUrl: 'http://localhost:11434' });
+```
+
+### Visual Guardian — Playwright DOM Audit
+
+Detects layout breaks, element collisions, and contrast violations in the rendered DOM:
+
+```typescript
+import { runVisualGuardian } from '@hale-bopp/valentino-engine';
+
+const report = await runVisualGuardian(pageSpec, {
+  renderHtml: (spec) => myRenderer(spec),
+  contrastThreshold: 4.5,  // WCAG AA
+});
+// → { passed, violations[], warnings[], summary }
+```
+
+> **Optional:** Requires `playwright` installed separately. Gracefully skips if not available — never blocks CI.
+
+```bash
+npm install --save-dev playwright && npx playwright install chromium
+```
+
+### Modular Intent Parser
+
+The NLP layer follows the Strategy Pattern — each intent type is an isolated, testable class:
+
+```
+src/core/intent-parsers/
+  strategies/query.strategies.ts     ← read-only intents
+  strategies/mutation.strategies.ts  ← write intents
+  llm-parser.ts                      ← LLM fallback
+  utils.ts                           ← NLP helpers
+```
+
+---
+
 ## The 10 Sovereign Guardrails
 
 1. **WhatIf di Layout** — Wireframe first, code second

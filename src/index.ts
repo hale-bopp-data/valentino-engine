@@ -181,8 +181,13 @@ export { importFromProject, scanProjectDirectory, analyzeHtmlStructure } from '.
 export type { ProjectScanResult, ProjectPageResult, ProjectAdapterResult, ProjectAdapterOptions } from './core/project-adapter.js';
 
 // OpenRouter Client — LLM integration for intent parsing (Feature #778)
-export { createOpenRouterCallback, testOpenRouterConnection } from './core/openrouter-client.js';
-export type { OpenRouterConfig } from './core/openrouter-client.js';
+export * from './core/providers/types.js';
+export { createOpenRouterCallback, testOpenRouterConnection } from './core/providers/openrouter.js';
+export type { OpenRouterConfig } from './core/providers/openrouter.js';
+export { createAzureOpenAICallback } from './core/providers/azure-openai.js';
+export type { AzureOpenAIConfig } from './core/providers/azure-openai.js';
+export { createOllamaCallback } from './core/providers/ollama.js';
+export type { OllamaConfig } from './core/providers/ollama.js';
 
 // Cockpit Server — HTTP API + Web UI (Feature #778, PBI #781)
 export { startCockpitServer } from './cockpit-server.js';
@@ -205,3 +210,7 @@ export type {
     ExtensionRegistry, CustomSectionRenderer, CustomGuardrail, GuardrailContext,
     ContentResolver, MediaResolver, EditorPanelDef,
 } from './core/extension-registry.js';
+
+// Visual Guardian — Playwright headless DOM audit (PBI-004, optional peer dep)
+export { runVisualGuardian, isPlaywrightAvailable } from './core/playwright-adapter.js';
+export type { VisualGuardianReport, VisualViolation, VisualGuardianOptions, RenderHtmlCallback } from './core/playwright-adapter.js';
