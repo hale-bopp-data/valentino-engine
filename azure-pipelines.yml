@@ -19,6 +19,13 @@ pr:
 pool:
   name: 'Default'
 
+resources:
+  repositories:
+    - repository: easyway-infra
+      type: git
+      name: EasyWay-DataPortal/easyway-infra
+      ref: refs/heads/develop
+
 variables:
   nodeVersion: '20.x'
 
@@ -110,3 +117,10 @@ stages:
               echo '{"version":"1","id":"smoke","sections":[{"type":"hero","titleKey":"h","presentation":{"surface":"dark"}},{"type":"cta","titleKey":"c","presentation":{"surface":"accent"}}]}' > /tmp/smoke-spec.json
               node dist/bin/valentino.js probe all /tmp/smoke-spec.json
             displayName: 'CLI: valentino probe all (smoke)'
+
+  # ─── Stage 4: Build-for-Cert telemetry (PBI #1473 Fase 0 D) ────────────────
+  - template: pipelines/build-for-cert.yml@easyway-infra
+    parameters:
+      repoName: hale-bopp-valentino-engine
+      mainPurpose: release_artifact
+      dependsOn: [Smoke]
