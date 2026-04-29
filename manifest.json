@@ -3,7 +3,7 @@
   "name": "Valentino Engine — Open Source UI Design Engine",
   "level": "L3",
   "classification": "product",
-  "version": "0.1.0",
+  "version": "2.7.0",
   "role": "ui_ux_designer",
   "owner": "hale-bopp",
   "description": "Open Source antifragile UI Design Engine. Generates Runtime PageSpec JSON, validates accessibility, enforces Design Tokens, and consults GEDI for architectural decisions.",
@@ -15,7 +15,7 @@
     "model": "deepseek/deepseek-v3.2",
     "tier": "T2",
     "temperature": 0.3,
-    "system_prompt": "agents/agent_valentino/PROMPTS.md",
+    "system_prompt": "PROMPTS.md",
     "fallback": {
       "provider": "deepseek",
       "model": "deepseek-chat",

@@ -1,0 +1,93 @@
+{
+  "id": "valentino-guardrails",
+  "name": "Valentino Sovereign Guardrails",
+  "version": "1.0.0",
+  "description": "10 regole antifragili che governano ogni design generato da Valentino Engine. Machine-readable SSoT — derivato da VALENTINO_ANTIFRAGILE_GUARDRAILS.md.",
+  "guardrails": [
+    {
+      "id": "GR01",
+      "name": "WhatIf di Layout",
+      "severity": "blocking",
+      "rule": "Prima di scrivere HTML/CSS complesso, genera sempre un wireframe testuale o struttura ad albero del DOM.",
+      "check": "Il design ha un wireframe pre-generato?",
+      "antifragile_outcome": "Previene spreco di cicli macchina e corruzione del repository su layout concettuale sbagliato."
+    },
+    {
+      "id": "GR02",
+      "name": "Component Boundary & Fallbacks",
+      "severity": "blocking",
+      "rule": "Tutti i bridge UI-API devono includere Error Boundaries o protezioni try/catch isolati. Caricamenti remoti devono mostrare Skeleton Loader o Fallback.",
+      "check": "Cosa succede se l'API è down? Il componente mostra un fallback o crasha l'intera pagina?",
+      "antifragile_outcome": "Degrado circoscritto: se un microservice va giù, solo il modulo interessato mostra errore, non l'intera applicazione."
+    },
+    {
+      "id": "GR03",
+      "name": "Design Token System",
+      "severity": "blocking",
+      "rule": "MAI colori o dimensioni hardcoded. Usare design token (CSS variables) o classi di sistema. Vietati #1a2b3c e px raw.",
+      "check": "Ci sono valori hardcoded (hex, px, rgba numerici) nel markup?",
+      "antifragile_outcome": "Re-theming istantaneo e globale modificando un solo file di token."
+    },
+    {
+      "id": "GR04",
+      "name": "L3 Audit prima del Commit",
+      "severity": "warning",
+      "rule": "Prima di approvare una PR, verificare: bloat dipendenze, accessibilità (ARIA/semantic tags), confine OPS/Product.",
+      "check": "La PR aggiunge nuove dipendenze? I tag semantici e ARIA sono presenti?",
+      "antifragile_outcome": "Bilancia entusiasmo UI con Quality Gate di piattaforma."
+    },
+    {
+      "id": "GR05",
+      "name": "Escalation Architecturale",
+      "severity": "advisory",
+      "rule": "Se c'è dubbio architetturale o trade-off di design complesso, fermarsi e risolvere il loop OODA prima di proporre codice.",
+      "check": "C'è un dubbio non risolto su questa decisione di design?",
+      "antifragile_outcome": "Previene design speculativo, garantisce allineamento con i principi EasyWay."
+    },
+    {
+      "id": "GR06",
+      "name": "Zero UI-Debt",
+      "severity": "blocking",
+      "rule": "Prima di creare un nuovo componente, scansionare il repository per componenti esistenti riutilizzabili. Se esiste, estendere o riutilizzare.",
+      "check": "Esiste già un componente simile nel design system? Perché ne serve uno nuovo?",
+      "antifragile_outcome": "Codebase converge verso Design System coeso. Bugfix su componente base ereditato da tutta l'app."
+    },
+    {
+      "id": "GR07",
+      "name": "Electrical Socket Pattern",
+      "severity": "blocking",
+      "rule": "MAI rgba/hex hardcoded nei componenti JS o classi CSS. Usare variabili root (es. rgba(var(--rgb-*), opacity)).",
+      "check": "Ci sono rgba() o hex raw nei componenti?",
+      "antifragile_outcome": "Branding centralizzato: cambio colore in un punto, propaga ovunque."
+    },
+    {
+      "id": "GR08",
+      "name": "Testudo Formation",
+      "severity": "blocking",
+      "rule": "Rispettare padding/spacing dei container standard in framework.css. MAI override inline di padding/margin globale nei componenti.",
+      "check": "Ci sono override di padding/margin via stile inline o style={}?",
+      "antifragile_outcome": "Griglie sempre allineate, consistenza UI garantita."
+    },
+    {
+      "id": "GR09",
+      "name": "Tangible Legacy",
+      "severity": "warning",
+      "rule": "Non replicare codice CSS in file di stile verticali se le primitive esistono già in framework.css. Usare utility class.",
+      "check": "Questo blocco CSS replica regole già presenti in framework.css?",
+      "antifragile_outcome": "Meno debito tecnico, meno peso payload, meno bug da regole sovrapposte."
+    },
+    {
+      "id": "GR10",
+      "name": "Visual Live Audit",
+      "severity": "advisory",
+      "rule": "Verificare integrità visiva con screenshot automatico (Playwright MCP o test:e2e:valentino). Ogni modifica UI deve avere prova visiva.",
+      "check": "C'è uno screenshot della pagina dopo questa modifica?",
+      "antifragile_outcome": "Prova oggettiva anti-regressione visuale, indipendenza da QA umano."
+    }
+  ],
+  "meta": {
+    "source": "VALENTINO_ANTIFRAGILE_GUARDRAILS.md",
+    "generated": "2026-04-29",
+    "doctrine": "G16 presa elettrica — machine-readable SSoT per validazione automatica"
+  }
+}
