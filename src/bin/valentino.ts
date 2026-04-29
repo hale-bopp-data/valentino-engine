@@ -16,6 +16,8 @@ import { runLlms } from './commands/llms.js';
 import { runCockpit } from './commands/cockpit.js';
 import { runThemeAudit } from './commands/theme-audit.js';
 import { runSpool } from './commands/spool.js';
+import { runFigmaImport } from './commands/figma.js';
+import { runImageGenerate } from './commands/image.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -76,9 +78,25 @@ switch (command) {
         runSpool(args);
         break;
 
+    case 'figma':
+        if (args[0] === 'import') runFigmaImport(args.slice(1));
+        else {
+            console.error('Usage: valentino figma import --file <figma.json> [options]');
+            process.exit(1);
+        }
+        break;
+
+    case 'image':
+        if (args[0] === 'generate') runImageGenerate(args.slice(1));
+        else {
+            console.error('Usage: valentino image generate --prompt "..." [--endpoint url] [options]');
+            process.exit(1);
+        }
+        break;
+
     default:
         console.log(`
-🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
+🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
 
 Usage:
   valentino init [name] [--template id] [--lang code] [--git url]  Create a new project
@@ -97,6 +115,8 @@ Usage:
   valentino cockpit --schema <page|action|section [type]>      Print JSON Schema
   valentino theme-audit <pack.json> [--registry r.json] [--level AA|AAA]  Audit theme-pack contrast on surfaces
   valentino spool <directory> [--out <file>]                          Analyze site CSS → Valentino tokens
+  valentino figma import --file <figma.json> [--template id]           Import Figma file → PageSpec
+  valentino image generate --prompt "desc" [--endpoint url] [options]  Generate image (placeholder or external)
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);

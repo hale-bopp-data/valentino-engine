@@ -7,7 +7,7 @@
 ## Identità
 | Campo | Valore |
 |---|---|
-| Cosa | npm @hale-bopp/valentino-engine — validazione, probe, audit CSS, MCP server 13 tool, cockpit conversazionale |
+| Cosa | npm @hale-bopp/valentino-engine — validazione, probe, audit CSS, MCP server 18 tool, cockpit conversazionale, Figma import, image bridge |
 | Linguaggio | TypeScript, CSS |
 | Branch | `feature/* -> develop -> main` (target da `factory-vcs.json`) |
 - **Package npm**: `@hale-bopp/valentino-engine`
@@ -42,6 +42,12 @@ I 9 criteri (3R+3A+3GP) sono definiti in `easyway/wiki/guides/governance/robust-
 ```bash
 # Self-check atomico — singolo PASS/FAIL (G16 presa elettrica)
 bash self-check.sh
+
+# Import Figma → PageSpec
+npx @hale-bopp/valentino figma import --file design.json
+
+# Genera immagine (placeholder o endpoint esterno)
+npx @hale-bopp/valentino image generate --prompt "hero banner" --primary-color '#1a73e8'
 
 # Validare un PageSpec JSON
 npx @hale-bopp/valentino validate ./pages/home.json
