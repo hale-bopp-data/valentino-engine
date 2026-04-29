@@ -57,7 +57,7 @@ import {
 } from '@hale-bopp/valentino-engine';
 ```
 
-## MCP Server (13 Tools)
+## MCP Server (18 Tools)
 
 Any MCP-compatible AI agent can connect to Valentino Engine:
 
@@ -84,7 +84,38 @@ Any MCP-compatible AI agent can connect to Valentino Engine:
 | `valentino_resolve_catalog` | Resolve spec with catalog (blueprints, presets) |
 | `valentino_resolve_route` | Resolve URL route to page ID |
 | `valentino_get_skill` | Get design skill rules |
-| `valentino_list_guardrails` | List 10 Sovereign Guardrails |
+| `valentino_list_guardrails` | List 10 Sovereign Guardrails from SSoT |
+| `valentino_self_check` | Engine self-diagnostics PASS/FAIL |
+| `valentino_recommend` | Guided design recommendations (no errors, only suggestions) |
+| `valentino_live_check` | Real-time CSS check while writing (fragments OK) |
+| `valentino_import_figma` | Import Figma file → PageSpec V1 |
+| `valentino_generate_image` | Generate images via external endpoint or placeholder SVG |
+| `valentino_probe_contrast_usage` | Probe CSS for text/accent usage without surface remaps |
+| `valentino_theme_audit` | Audit theme-pack WCAG contrast across all surfaces |
+
+## Figma Import
+
+```bash
+# From Figma JSON export
+valentino figma import --file design.json --template corporate
+
+# Direct from Figma API
+valentino figma import --file-key abc123 --figma-token figd_xxx
+```
+
+Converts Figma frames → PageSpec sections (hero, cards, cta). Maps Figma styles → design tokens.
+
+## Image Bridge (Provider Pattern G16)
+
+Valentino doesn't generate images — it orchestrates external services. Default: placeholder SVG from design tokens.
+
+```bash
+# Placeholder SVG (zero dependencies)
+valentino image generate --prompt "hero banner" --primary-color '#1a73e8' --output hero.svg
+
+# External endpoint (any provider: DALL-E, Stability, nanobanana...)
+valentino image generate --prompt "data dashboard" --endpoint https://api.example.com/v1/images --token sk-xxx
+```
 
 ## Valentino Cockpit — Il Sarto Parla
 
