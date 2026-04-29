@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased] — develop
+
+### Added
+- **Figma Import (#1671)**: `figmaToPageSpec()` converts Figma REST API JSON → PageSpec V1. Maps frames → sections (hero/cards/cta), extracts tokens from fills. MCP `valentino_import_figma`. CLI `valentino figma import`.
+- **Image Bridge (#1671)**: Provider pattern (G16) for external image generation. Default: placeholder SVG from design tokens. `generateImage()` + `generatePlaceholder()`. MCP `valentino_generate_image`. CLI `valentino image generate`.
+- **MCP Self-Check (#1668)**: `valentino_self_check` — engine self-diagnostics PASS/FAIL (guardrails.json, PROMPTS.md, core modules).
+- **MCP Recommend (#1668)**: `valentino_recommend` — guided suggestions, never errors. Invisible hand for LLMs.
+- **MCP Live Check (#1668)**: `valentino_live_check` — real-time CSS guidance while writing, works on incomplete fragments.
+- **Guardrails SSoT (#1668)**: `guardrails.json` — 10 Sovereign Guardrails machine-readable (GR01-GR10, severity, rule, check).
+- **Self-check script (#1668)**: `self-check.sh` — atomic PASS/FAIL (5 checks: vitest, css audit, wcag, guardrails, build).
+- **Test coverage (#1668)**: 34 new tests (editor.ts + schema-export.ts + figma-import + image provider). Total: 535.
+
+### Changed
+- **MCP**: 13 tools → 18 tools
+- **PROMPTS.md**: rewritten as universal design guide for any LLM (was missing/broken)
+- **Manifest**: version 0.1.0 → 2.7.0, system_prompt path fixed
+
 ## [2.1.0] — 2026-03-26
 
 ### Added
