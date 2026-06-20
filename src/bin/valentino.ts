@@ -16,6 +16,8 @@ import { runLlms } from './commands/llms.js';
 import { runCockpit } from './commands/cockpit.js';
 import { runThemeAudit } from './commands/theme-audit.js';
 import { runSpool } from './commands/spool.js';
+import { runAuditHtml } from './commands/audit-html.js';
+import { runValidateTokens } from './commands/validate-tokens.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -76,6 +78,14 @@ switch (command) {
         runSpool(args);
         break;
 
+    case 'audit-html':
+        runAuditHtml(args);
+        break;
+
+    case 'validate-tokens':
+        runValidateTokens(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v0.1.0 — Antifragile Open Source UI Design Engine
@@ -97,6 +107,8 @@ Usage:
   valentino cockpit --schema <page|action|section [type]>      Print JSON Schema
   valentino theme-audit <pack.json> [--registry r.json] [--level AA|AAA]  Audit theme-pack contrast on surfaces
   valentino spool <directory> [--out <file>]                          Analyze site CSS → Valentino tokens
+  valentino audit-html <file.html>                                  Audit HTML for CSS violations (inline + <style>)
+  valentino validate-tokens <file.css>                              Detect self-referencing/circular CSS tokens
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
