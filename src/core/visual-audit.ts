@@ -1,3 +1,6 @@
+import type { AuditProfile } from './spa-profile.js';
+import { buildSpaAuditScript } from './spa-profile.js';
+
 export interface VisualAuditViolation {
   type: 'overflow' | 'collision' | 'contrast' | 'missing-element';
   severity: 'error' | 'warning';
@@ -15,6 +18,8 @@ export interface VisualAuditResult {
   summary: string;
   viewport?: { width: number; height: number };
   phase?: string;
+  profile?: AuditProfile;
+  meta?: Record<string, unknown>;
 }
 
 export interface ResponsiveAuditResult {
@@ -31,6 +36,7 @@ export interface VisualAuditOptions {
   settleMs?: number;
   url?: string;
   responsive?: boolean;
+  profile?: AuditProfile;
 }
 
 export const EXIT_CODES = {
@@ -162,7 +168,10 @@ export async function runVisualAudit(
     contrastThreshold = 4.5,
     settleMs = 1000,
     url: explicitUrl,
+    profile = 'landing',
   } = options;
+
+  const auditScript = profile === 'landing' ? AUDIT_SCRIPT : buildSpaAuditScript(profile);
 
   const targetUrl = explicitUrl || (isUrl(htmlOrUrl) ? htmlOrUrl : undefined);
   const html = targetUrl ? undefined : htmlOrUrl;
@@ -206,10 +215,11 @@ export async function runVisualAudit(
     if (settleMs > 0) await page.waitForTimeout(settleMs);
 
     phase = 'audit-script';
-    const result = await page.evaluate(AUDIT_SCRIPT, contrastThreshold) as {
+    const result = await page.evaluate(auditScript, contrastThreshold) as {
       violations: VisualAuditViolation[];
       warnings: VisualAuditViolation[];
       elementCount: number;
+      meta?: Record<string, unknown>;
     };
 
     if (!result || !Array.isArray(result.violations)) {
@@ -245,6 +255,8 @@ export async function runVisualAudit(
         : `Visual audit FAILED in ${durationMs}ms — ${result.violations.length} error(s), ${result.warnings.length} warning(s)`,
       viewport: { width: viewportWidth, height: viewportHeight },
       phase: 'complete',
+      profile,
+      meta: result.meta,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

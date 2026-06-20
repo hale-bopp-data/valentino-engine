@@ -75,11 +75,13 @@ export type { SecurityViolation, SecurityCertification } from './core/certify-se
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';
 export type { ContrastLevel, ContrastResult } from './core/contrast.js';
 export { probeRhythm } from './core/rhythm.js';
-export type { RhythmWarning, RhythmProbeResult } from './core/rhythm.js';
+export type { RhythmWarning, RhythmProbeResult, RhythmOptions } from './core/rhythm.js';
 export { probeHeroContract } from './core/hero-contract.js';
 export type { HeroContractWarning, HeroContractResult } from './core/hero-contract.js';
 export { probeSectionIntegrity } from './core/section-integrity.js';
 export type { IntegrityWarning, IntegrityResult } from './core/section-integrity.js';
+export { getProfileConfig, isValidProfile, buildSpaAuditScript } from './core/spa-profile.js';
+export type { AuditProfile, ProfileConfig } from './core/spa-profile.js';
 
 // Theme Audit — static contrast analysis for theme-packs against surfaces
 export {
