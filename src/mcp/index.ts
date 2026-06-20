@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from '../core/guardrails.js';
+import { auditHtml } from '../core/audit-html.js';
+import { validateTokens } from '../core/validate-tokens.js';
 import { validatePageSpec } from '../core/page-spec.js';
 import { premiumDesignSkill, webGuardrailsSkill, designGuidelinesSkill } from '../skills/index.js';
 import { checkWcagContrast } from '../core/contrast.js';
@@ -46,6 +48,24 @@ server.tool(
       ? { valid: true, message: 'No guardrail violations found.' }
       : { valid: false, violations });
   },
+);
+
+// ─── Audit HTML ───────────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_audit_html',
+  'Audit an HTML string for CSS violations in <style> tags and inline style attributes. Checks for hardcoded px, hex/rgba colors, and named colors.',
+  { html: z.string().describe('HTML content to audit') },
+  async ({ html }) => jsonResult(auditHtml(html)),
+);
+
+// ─── Validate Tokens ──────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_validate_tokens',
+  'Validate CSS custom properties (tokens) for self-references, circular dependencies, and unresolved var() references.',
+  { css: z.string().describe('CSS content with custom property declarations') },
+  async ({ css }) => jsonResult(validateTokens(css)),
 );
 
 // ─── Validate ─────────────────────────────────────────────────────────────────
@@ -243,7 +263,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('valentino-engine MCP server running on stdio (13 tools)');
+  console.error('valentino-engine MCP server running on stdio (15 tools)');
   process.stdin.resume();
 }
 
