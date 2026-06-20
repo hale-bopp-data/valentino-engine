@@ -26,6 +26,7 @@ import { runVisualAuditCmd } from './commands/visual-audit.js';
 import { runReport } from './commands/report.js';
 import { runWatch } from './commands/watch.js';
 import { runGridContract } from './commands/grid-contract.js';
+import { runTemplateAudit } from './commands/template-audit.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -134,6 +135,10 @@ switch (command) {
         runGridContract(args).catch(e => { console.error(e); process.exit(1); });
         break;
 
+    case 'template-audit':
+        runTemplateAudit(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
@@ -169,6 +174,7 @@ Usage:
   valentino watch <file|directory>                                   Watch for changes and auto-audit
   valentino grid-contract init <file.html> [--selector s] [--out f]  Generate grid layout contract from DOM
   valentino grid-contract verify <file.html> --contract <file.json>  Verify DOM matches grid contract
+  valentino template-audit <file> [--template jinja2|twig|ejs]       Detect template/CSS conflicts (auto-detect engine)
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
