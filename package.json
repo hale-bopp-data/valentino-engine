@@ -45,7 +45,8 @@
     "LICENSE",
     "CHANGELOG.md",
     "AGENTS.md",
-    "skills"
+    "skills",
+    "scripts"
   ],
   "publishConfig": {
     "access": "public"
@@ -59,7 +60,8 @@
     "probe": "tsx src/bin/valentino.ts probe",
     "contrast": "tsx src/bin/valentino.ts contrast",
     "cockpit": "tsx src/bin/valentino.ts cockpit",
-    "cockpit:serve": "tsx src/cockpit-server.ts"
+    "cockpit:serve": "tsx src/cockpit-server.ts",
+    "postinstall": "node scripts/postinstall.mjs"
   },
   "keywords": [
     "ui",
