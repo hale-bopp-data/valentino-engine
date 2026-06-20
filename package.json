@@ -1,7 +1,7 @@
 {
   "name": "@hale-bopp/valentino-engine",
-  "version": "2.11.1",
-  "description": "Antifragile Open Source UI Design Engine — generates Runtime PageSpec JSON, validates accessibility, enforces Design Tokens, and consults GEDI for architectural decisions.",
+  "version": "2.11.2",
+  "description": "Antifragile Open Source UI Design Engine — validates PageSpec JSON, enforces Design Tokens, audits CSS guardrails, checks WCAG accessibility, and provides MCP tools for AI-assisted UI development.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -83,10 +83,10 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0",
     "tsx": "^4.19.0",
-    "vitest": "^2.1.0",
-    "@types/node": "^22.10.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.9"
   },
   "peerDependencies": {
     "playwright": ">=1.40.0"
