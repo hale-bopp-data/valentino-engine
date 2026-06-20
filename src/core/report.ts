@@ -27,6 +27,7 @@ export interface UnifiedReport {
 
 export interface ReportOptions {
   allowTokenDefinitions?: boolean;
+  allowedTokenPrefixes?: string[];
 }
 
 function detectType(filePath: string): 'css' | 'html' {
@@ -103,7 +104,7 @@ export function generateReport(filePath: string, options?: ReportOptions): Unifi
   const fileType = detectType(filePath);
   const sections: ReportSection[] = [];
   const guardrailOpts: GuardrailOptions | undefined = options?.allowTokenDefinitions
-    ? { allowTokenDefinitions: true }
+    ? { allowTokenDefinitions: true, allowedTokenPrefixes: options.allowedTokenPrefixes }
     : undefined;
 
   if (fileType === 'html') {

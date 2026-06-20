@@ -50,6 +50,8 @@ export { validatePageSpec } from './core/page-spec.js';
 export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors, GUARDRAILS } from './core/guardrails.js';
 export type { GuardrailOptions } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
+export { findConfigFile, loadTokenConfig, resolveGuardrailOptions } from './core/guardrail-config.js';
+export type { ValentinoTokenConfig } from './core/guardrail-config.js';
 
 // HTML Audit — audit <style> tags and inline styles in HTML (#3028)
 export { auditHtml, fixHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';

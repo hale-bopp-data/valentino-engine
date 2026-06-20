@@ -7,6 +7,7 @@ import { CSS_NAMED_COLORS } from './css-named-colors.js';
 
 export interface GuardrailOptions {
   allowTokenDefinitions?: boolean;
+  allowedTokenPrefixes?: string[];
 }
 
 export const GUARDRAILS = {
@@ -21,16 +22,21 @@ export const GUARDRAILS = {
 } as const;
 
 const TOKEN_DEFINITION_RE = /^\s*--[\w-]+\s*:/;
+const TOKEN_NAME_RE = /^\s*(--[\w-]+)\s*:/;
 
-function isTokenDefinition(line: string): boolean {
-  return TOKEN_DEFINITION_RE.test(line);
+function isTokenDefinition(line: string, prefixes?: string[]): boolean {
+  if (!TOKEN_DEFINITION_RE.test(line)) return false;
+  if (!prefixes || prefixes.length === 0) return true;
+  const match = line.match(TOKEN_NAME_RE);
+  if (!match) return false;
+  return prefixes.some(p => match[1].startsWith(p));
 }
 
 export function checkNoHardcodedPx(css: string, options?: GuardrailOptions): string[] {
   const violations: string[] = [];
   const lines = css.split('\n');
   lines.forEach((line, i) => {
-    if (options?.allowTokenDefinitions && isTokenDefinition(line)) return;
+    if (options?.allowTokenDefinitions && isTokenDefinition(line, options.allowedTokenPrefixes)) return;
     if (GUARDRAILS.NO_HARDCODED_PX.test(line)) {
       violations.push(`Line ${i + 1}: Hardcoded px detected — use --valentino-rhythm-* variables. "${line.trim()}"`);
     }
@@ -42,7 +48,7 @@ export function checkNoHardcodedColor(css: string, options?: GuardrailOptions): 
   const violations: string[] = [];
   const lines = css.split('\n');
   lines.forEach((line, i) => {
-    if (options?.allowTokenDefinitions && isTokenDefinition(line)) return;
+    if (options?.allowTokenDefinitions && isTokenDefinition(line, options.allowedTokenPrefixes)) return;
     if (GUARDRAILS.NO_HARDCODED_COLOR.test(line)) {
       violations.push(`Line ${i + 1}: Hardcoded color detected — use CSS root variables. "${line.trim()}"`);
     }
@@ -61,7 +67,7 @@ export function checkNoNamedColor(css: string, options?: GuardrailOptions): stri
   const violations: string[] = [];
   const lines = css.split('\n');
   lines.forEach((line, i) => {
-    if (options?.allowTokenDefinitions && isTokenDefinition(line)) return;
+    if (options?.allowTokenDefinitions && isTokenDefinition(line, options.allowedTokenPrefixes)) return;
     CSS_VALUE_WORD_RE.lastIndex = 0;
     let match;
     while ((match = CSS_VALUE_WORD_RE.exec(line)) !== null) {

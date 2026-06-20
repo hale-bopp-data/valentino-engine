@@ -1,7 +1,9 @@
 import { readFileSync } from 'fs';
+import { dirname } from 'path';
 import { auditHtml, fixHtml } from '../../core/audit-html.js';
 import type { GuardrailOptions } from '../../core/guardrails.js';
 import { createBackup, computeDiff, formatDiff, writeFixed, parseFixArgs } from '../../core/backup.js';
+import { resolveGuardrailOptions } from '../../core/guardrail-config.js';
 
 export function runAuditHtml(args: string[]): void {
     const { fix, noBackup, file } = parseFixArgs(args);
@@ -11,7 +13,7 @@ export function runAuditHtml(args: string[]): void {
         process.exit(1);
     }
     const html = readFileSync(file, 'utf-8');
-    const opts: GuardrailOptions | undefined = allowTokenDefs ? { allowTokenDefinitions: true } : undefined;
+    const opts: GuardrailOptions | undefined = resolveGuardrailOptions(allowTokenDefs, dirname(file));
     const result = auditHtml(html, opts);
     console.log(`Scanned: ${result.styleTagCount} <style> tag(s), ${result.inlineStyleCount} inline style(s)\n`);
     if (result.valid) {
