@@ -1,6 +1,6 @@
 {
   "name": "@hale-bopp/valentino-engine",
-  "version": "2.11.2",
+  "version": "2.11.3",
   "description": "Antifragile Open Source UI Design Engine — validates PageSpec JSON, enforces Design Tokens, audits CSS guardrails, checks WCAG accessibility, and provides MCP tools for AI-assisted UI development.",
   "type": "module",
   "main": "dist/index.js",
@@ -79,12 +79,12 @@
     "url": "https://github.com/hale-bopp-data/valentino-engine.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "tsx": "^4.19.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.7.0",
     "vitest": "^4.1.9"
   },
