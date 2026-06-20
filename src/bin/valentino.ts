@@ -22,6 +22,10 @@ import { runAuditHtml } from './commands/audit-html.js';
 import { runValidateTokens } from './commands/validate-tokens.js';
 import { runRefactor } from './commands/refactor.js';
 import { runCertify } from './commands/certify.js';
+import { runVisualAuditCmd } from './commands/visual-audit.js';
+import { runReport } from './commands/report.js';
+import { runWatch } from './commands/watch.js';
+import { runGridContract } from './commands/grid-contract.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -114,6 +118,22 @@ switch (command) {
         runCertify(args);
         break;
 
+    case 'visual-audit':
+        runVisualAuditCmd(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
+    case 'report':
+        runReport(args);
+        break;
+
+    case 'watch':
+        runWatch(args);
+        break;
+
+    case 'grid-contract':
+        runGridContract(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
@@ -144,6 +164,11 @@ Usage:
   valentino validate-tokens <file.css> --fix [--no-backup]           Auto-fix self-refs + backup original
   valentino refactor <file> [--dry-run] [--apply] [--no-backup]      Preview + apply refactor with self-ref guard
   valentino certify --security <file.html|file.css>                  Security audit: inline styles, token overrides, event handlers
+  valentino report <file.css|file.html>                              Unified report: audit + tokens + security in one command
+  valentino visual-audit <file.html>                                 Visual audit via Playwright (overflow, collision, contrast)
+  valentino watch <file|directory>                                   Watch for changes and auto-audit
+  valentino grid-contract init <file.html> [--selector s] [--out f]  Generate grid layout contract from DOM
+  valentino grid-contract verify <file.html> --contract <file.json>  Verify DOM matches grid contract
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);

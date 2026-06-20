@@ -234,3 +234,23 @@ export type {
 // Visual Guardian — Playwright headless DOM audit (PBI-004, optional peer dep)
 export { runVisualGuardian, isPlaywrightAvailable } from './core/playwright-adapter.js';
 export type { VisualGuardianReport, VisualViolation, VisualGuardianOptions, RenderHtmlCallback } from './core/playwright-adapter.js';
+
+// Visual Audit — first-class Playwright audit on raw HTML (#3032)
+export { runVisualAudit, formatVisualAudit } from './core/visual-audit.js';
+export type { VisualAuditViolation, VisualAuditResult, VisualAuditOptions } from './core/visual-audit.js';
+
+// Unified Report — one command for all audits (#3030)
+export { generateReport, formatReport } from './core/report.js';
+export type { ReportSection, UnifiedReport } from './core/report.js';
+
+// Runtime Token Verification — Playwright getComputedStyle (#3037)
+export { verifyTokensRuntime, formatVerifyRuntime } from './core/verify-tokens-runtime.js';
+export type { RuntimeTokenResult, VerifyTokensRuntimeResult } from './core/verify-tokens-runtime.js';
+
+// Watch — live file observer with auto-audit (#3038)
+export { watchFile, auditFileForWatch, formatWatchEvent } from './core/watch.js';
+export type { WatchEvent, WatchOptions } from './core/watch.js';
+
+// Grid Contract — declare and verify DOM grid layout (#3040)
+export { initGridContract, verifyGridContract, formatGridContract, formatGridVerify } from './core/grid-contract.js';
+export type { GridSlot, GridContract, GridVerifyViolation, GridVerifyResult } from './core/grid-contract.js';
