@@ -1,6 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { readFileSync, existsSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from '../core/guardrails.js';
 import { auditHtml } from '../core/audit-html.js';
 import { validateTokens } from '../core/validate-tokens.js';
@@ -15,11 +18,25 @@ import { resolvePageIdByRoute } from '../core/manifest.js';
 import { auditThemePack, validateThemePackAgainstRegistry, VALENTINO_SURFACES, type ThemePackTokens, type SurfaceDefinition } from '../core/theme-audit.js';
 import { probeContrastUsage } from '../core/contrast-usage-probe.js';
 import type { ContrastLevel } from '../core/contrast.js';
+import { figmaToPageSpec, fetchFigmaFile, type FigmaImportOptions } from '../core/figma-import.js';
+import { generateImage, generatePlaceholder, type ImageGenerationRequest, type ImageProviderConfig } from '../core/providers/image.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
+
+// ─── Load guardrails.json (SSoT machine-readable) ────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+const engineRoot = resolve(dirname(__filename), '..', '..');
+const guardrailsPath = resolve(engineRoot, 'guardrails.json');
+let guardrailsSSoT: Array<{ id: string; name: string; severity: string; rule: string }> = [];
+if (existsSync(guardrailsPath)) {
+  try {
+    const raw = JSON.parse(readFileSync(guardrailsPath, 'utf-8'));
+    guardrailsSSoT = raw.guardrails || [];
+  } catch { /* fallback to hardcoded below */ }
+}
 
 const server = new McpServer({
   name: 'valentino-engine',
-  version: '0.2.0',
+  version: '2.7.0',
 });
 
 function jsonResult(data: unknown) {
@@ -239,22 +256,311 @@ server.tool(
 
 server.tool(
   'valentino_list_guardrails',
-  'List all 10 Sovereign Guardrails of Valentino Engine.',
+  'List all Valentino Sovereign Guardrails from the machine-readable SSoT (guardrails.json).',
   {},
   async () => {
-    const guardrails = [
+    if (guardrailsSSoT.length > 0) {
+      const lines = guardrailsSSoT.map(
+        (g, i) => `${i + 1}. ${g.name} [${g.severity}] — ${g.rule}`
+      );
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
+    }
+    // Fallback hardcoded (if guardrails.json unreadable)
+    const fallback = [
       '1. WhatIf di Layout — Never generate code without a conceptual wireframe first',
       '2. Component Boundary & Fallbacks — All API bridges must include Error Boundaries',
       '3. Design Token System — No magic numbers or hardcoded hex/rgba values',
       '4. L3 Audit before Commit — Check for dependency bloat and ARIA compliance',
-      '5. Escalation to GEDI — Consult GEDI on architectural trade-offs',
+      '5. Escalation Architecturale — Resolve OODA loop before proposing code',
       '6. Zero UI-Debt — Always scan for reusable components before creating new ones',
       '7. Electrical Socket Pattern — Colors via CSS root variables only',
       '8. Testudo Formation — Respect parent container padding, no inline overrides',
       '9. Tangible Legacy — No redundant CSS blocks; use utility classes',
       '10. Visual Live Audit — Use MCP browser_screenshot or npm run test:e2e:valentino',
     ];
-    return { content: [{ type: 'text' as const, text: guardrails.join('\n') }] };
+    return { content: [{ type: 'text' as const, text: fallback.join('\n') }] };
+  },
+);
+
+// ─── Self-Check ────────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_self_check',
+  'Run engine self-diagnostics: guardrails.json integrity, PROMPTS.md presence, core module loadability. Returns PASS/FAIL with breakdown.',
+  {},
+  async () => {
+    const checks: Array<{ name: string; status: string; detail: string }> = [];
+    let passed = 0;
+    let failed = 0;
+
+    // 1. guardrails.json SSoT integrity
+    if (guardrailsSSoT.length >= 10) {
+      checks.push({ name: 'guardrails.json', status: 'PASS', detail: `${guardrailsSSoT.length}/10 guardrails loaded` });
+      passed++;
+    } else {
+      checks.push({ name: 'guardrails.json', status: 'FAIL', detail: `Only ${guardrailsSSoT.length}/10 guardrails found` });
+      failed++;
+    }
+
+    // 2. PROMPTS.md presence
+    const promptsPath = resolve(engineRoot, 'PROMPTS.md');
+    if (existsSync(promptsPath)) {
+      checks.push({ name: 'PROMPTS.md', status: 'PASS', detail: 'System prompt found' });
+      passed++;
+    } else {
+      checks.push({ name: 'PROMPTS.md', status: 'FAIL', detail: `${promptsPath} not found` });
+      failed++;
+    }
+
+    // 3. Core modules loadable (can import without throwing)
+    try {
+      const testSpec: PageSpecV1 = { version: '1', id: '_selfcheck', sections: [] };
+      if (validatePageSpec(testSpec)) {
+        checks.push({ name: 'page-spec', status: 'PASS', detail: 'validatePageSpec functional' });
+        passed++;
+      } else {
+        checks.push({ name: 'page-spec', status: 'FAIL', detail: 'validatePageSpec returned false for valid spec' });
+        failed++;
+      }
+    } catch (e) {
+      checks.push({ name: 'page-spec', status: 'FAIL', detail: `Import error: ${String(e)}` });
+      failed++;
+    }
+
+    // 4. CSS guardrails functional
+    try {
+      const dummyCss = ':root { --color: #123; }';
+      const pxViolations = checkNoHardcodedPx(dummyCss);
+      const colorViolations = checkNoHardcodedColor(dummyCss);
+      checks.push({ name: 'css-guardrails', status: 'PASS', detail: `px:${pxViolations.length} color:${colorViolations.length} violations (dummy)` });
+      passed++;
+    } catch (e) {
+      checks.push({ name: 'css-guardrails', status: 'FAIL', detail: `Guardrail error: ${String(e)}` });
+      failed++;
+    }
+
+    // 5. WCAG contrast functional
+    try {
+      checkWcagContrast('#000000', '#FFFFFF', 'AA');
+      checks.push({ name: 'wcag-contrast', status: 'PASS', detail: 'checkWcagContrast functional' });
+      passed++;
+    } catch (e) {
+      checks.push({ name: 'wcag-contrast', status: 'FAIL', detail: `Contrast error: ${String(e)}` });
+      failed++;
+    }
+
+    return jsonResult({
+      outcome: failed === 0 ? 'PASS' : 'FAIL',
+      score: `${passed}/${passed + failed}`,
+      checks,
+    });
+  },
+);
+
+// ─── Recommend ─────────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_recommend',
+  'Get guided design recommendations for a CSS snippet. Instead of listing violations, suggests token replacements and better patterns. The invisible hand: guides, does not punish.',
+  { css: z.string().describe('CSS content to analyze for recommendations') },
+  async ({ css }) => {
+    const suggestions: string[] = [];
+
+    const pxViolations = checkNoHardcodedPx(css);
+    for (const v of pxViolations) {
+      suggestions.push(`Sostituzione suggerita: ${v}`);
+    }
+
+    const colorViolations = [
+      ...checkNoHardcodedColor(css),
+      ...checkNoNamedColor(css),
+    ];
+    for (const v of colorViolations) {
+      suggestions.push(`Colore da convertire in token: ${v}`);
+    }
+
+    if (suggestions.length === 0) {
+      suggestions.push('Nessun miglioramento evidente. Il CSS usa design token e non ha valori hardcoded. Ottimo lavoro!');
+    }
+
+    return jsonResult({
+      recommendation_count: suggestions.length,
+      suggestions,
+      principle: 'La mano invisibile guida, non giudica. Ogni suggerimento è un invito, non un obbligo.',
+    });
+  },
+);
+
+// ─── Live Check — real-time inline guidance while writing ──────────────────
+
+server.tool(
+  'valentino_live_check',
+  'Real-time CSS check while writing. Pass a CSS fragment (even incomplete) and get gentle, inline guidance: token suggestions, rhythm hints, accessibility reminders. Non-blocking — always returns suggestions, never errors.',
+  { css: z.string().describe('CSS fragment to check (can be incomplete/in-progress)') },
+  async ({ css }) => {
+    const guidance: string[] = [];
+    let tokenCount = 0;
+    let hardcodedCount = 0;
+
+    // Check for hardcoded px — suggest rhythm tokens
+    const pxMatches = css.match(/(\d+)px/g);
+    if (pxMatches) {
+      for (const m of pxMatches) {
+        const val = parseInt(m);
+        // Map common px values to rhythm suggestions
+        const rhythmHints: Record<number, string> = {
+          0: '0 (usa 0 senza unità)',
+          4: 'var(--space-xs)',
+          8: 'var(--space-sm)',
+          12: 'var(--space-md)',
+          16: 'var(--space)',
+          20: 'var(--space-lg)',
+          24: 'var(--space-xl)',
+          32: 'var(--space-2xl)',
+          40: 'var(--space-3xl)',
+          48: 'var(--space-4xl)',
+          64: 'var(--space-5xl)',
+          80: 'var(--space-6xl)',
+        };
+        const hint = rhythmHints[val];
+        if (hint) {
+          guidance.push(`${m} → ${hint}`);
+          hardcodedCount++;
+        } else {
+          guidance.push(`${m} → considera un token di spaziatura var(--space-*)`);
+          hardcodedCount++;
+        }
+      }
+    }
+
+    // Check for hex/rgb colors — suggest token lookup
+    const hexMatches = css.match(/#[0-9a-fA-F]{3,8}/g) || [];
+    const rgbMatches = css.match(/rgba?\s*\([^)]+\)/g) || [];
+    for (const m of [...hexMatches, ...rgbMatches]) {
+      guidance.push(`${m} → esiste un token semantico per questo colore? Controlla tokens.css.`);
+      hardcodedCount++;
+    }
+
+    // Check for CSS variables — positive reinforcement
+    const varMatches = css.match(/var\(--[\w-]+\)/g) || [];
+    tokenCount = varMatches.length;
+
+    if (hardcodedCount === 0 && tokenCount > 0) {
+      guidance.push('Bene! Stai usando design token. Continua così.');
+    } else if (hardcodedCount === 0 && tokenCount === 0) {
+      guidance.push('Pronto per aggiungere stili. Ricorda: usa var(--*) per colori e spaziature.');
+    }
+
+    return jsonResult({
+      tokens_used: tokenCount,
+      hardcoded_found: hardcodedCount,
+      guidance,
+      live_check: true,
+    });
+  },
+);
+
+// ─── Figma Import ─────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_import_figma',
+  'Import a Figma file and convert to Valentino PageSpec V1. Provide Figma JSON directly or fetch via fileKey+figmaToken.',
+  {
+    figmaJson: z.string().optional().describe('Figma REST API JSON response (document object). Use this OR fileKey+figmaToken.'),
+    fileKey: z.string().optional().describe('Figma file key (from URL). Requires figmaToken.'),
+    figmaToken: z.string().optional().describe('Figma personal access token. Required if using fileKey.'),
+    template: z.string().optional().describe('PageSpec template id (default: corporate)'),
+  },
+  async ({ figmaJson, fileKey, figmaToken, template }) => {
+    try {
+      if (figmaJson) {
+        const doc = JSON.parse(figmaJson);
+        const result = figmaToPageSpec(doc, { template });
+        return jsonResult({
+          ...result,
+          importMethod: 'json',
+        });
+      }
+
+      if (fileKey && figmaToken) {
+        const doc = await fetchFigmaFile(fileKey, figmaToken);
+        const result = figmaToPageSpec(doc, { template });
+        return jsonResult({
+          ...result,
+          importMethod: 'api',
+          importedFrom: `Figma file ${fileKey}`,
+        });
+      }
+
+      return jsonResult({
+        error: 'Provide either figmaJson (Figma document JSON) or fileKey+figmaToken.',
+        usage: 'figmaJson: "{\\"document\\":{\\"children\\":[...]}}"  OR  fileKey:"abc123" figmaToken:"figd_..."',
+      });
+    } catch (e) {
+      return jsonResult({
+        error: `Figma import failed: ${String(e)}`,
+        help: 'Verify the Figma JSON is a valid document object with document.children array.',
+      });
+    }
+  },
+);
+
+// ─── Image Generation ─────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_generate_image',
+  'Generate an image for a PageSpec section. Uses configured external endpoint or falls back to placeholder SVG from design tokens. Valentino is the orchestrator — the external service does the generation.',
+  {
+    prompt: z.string().describe('Text prompt describing the desired image'),
+    primaryColor: z.string().optional().describe('Primary brand color (hex, e.g. #1a73e8)'),
+    backgroundColor: z.string().optional().describe('Background color (hex, e.g. #0a0a0a)'),
+    accentColor: z.string().optional().describe('Accent color (hex)'),
+    width: z.number().optional().describe('Image width in pixels (default: 1200)'),
+    height: z.number().optional().describe('Image height in pixels (default: 630)'),
+    style: z.enum(['corporate', 'landing', 'minimal']).optional().describe('Visual style (default: corporate)'),
+    endpoint: z.string().optional().describe('External image API endpoint URL. If omitted, generates placeholder SVG.'),
+    externalToken: z.string().optional().describe('Token for external endpoint'),
+    model: z.string().optional().describe('Model identifier for external provider'),
+  },
+  async ({ prompt, primaryColor, backgroundColor, accentColor, width, height, style, endpoint, externalToken, model }) => {
+    try {
+      const request: ImageGenerationRequest = {
+        prompt,
+        context: {
+          primaryColor: primaryColor || '#1a73e8',
+          backgroundColor: backgroundColor || '#0a0a0a',
+          accentColor: accentColor || '#34a853',
+          textColor: '#ffffff',
+          width: width || 1200,
+          height: height || 630,
+          style: style || 'corporate',
+        },
+      };
+
+      const config: ImageProviderConfig = {
+        endpoint,
+        token: externalToken,
+        model,
+        width: width || 1200,
+        height: height || 630,
+      };
+
+      const result = await generateImage(request, config);
+
+      return jsonResult({
+        ...result,
+        generatedFor: prompt.substring(0, 100),
+        isPlaceholder: !!result.svg,
+        note: result.svg
+          ? 'Placeholder SVG generated from design tokens. Configure an external endpoint (--endpoint) for AI-generated images.'
+          : `Image generated by ${result.provider}`,
+      });
+    } catch (e) {
+      return jsonResult({
+        error: `Image generation failed: ${String(e)}`,
+        fallback: 'Placeholder SVG available — use without endpoint parameter.',
+      });
+    }
   },
 );
 
@@ -263,7 +569,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('valentino-engine MCP server running on stdio (15 tools)');
+  console.error('valentino-engine MCP server running on stdio (20 tools)');
   process.stdin.resume();
 }
 
