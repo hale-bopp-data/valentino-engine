@@ -4,6 +4,10 @@
  * `npx @hale-bopp/valentino <command> [args]`
  */
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const { version } = require('../../package.json');
+
 import { runAudit } from './commands/audit.js';
 import { runValidate } from './commands/validate.js';
 import { runGuardrails } from './commands/guardrails.js';
@@ -146,7 +150,7 @@ switch (command) {
 
     default:
         console.log(`
-🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
+🎨 Valentino Engine v${version} — Antifragile Open Source UI Design Engine
 
 Usage:
   valentino init [name] [--template id] [--lang code] [--git url]  Create a new project
