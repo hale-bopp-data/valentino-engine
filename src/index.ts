@@ -254,3 +254,7 @@ export type { WatchEvent, WatchOptions } from './core/watch.js';
 // Grid Contract — declare and verify DOM grid layout (#3040)
 export { initGridContract, verifyGridContract, formatGridContract, formatGridVerify } from './core/grid-contract.js';
 export type { GridSlot, GridContract, GridVerifyViolation, GridVerifyResult } from './core/grid-contract.js';
+
+// Template Engine Awareness — detect template/CSS conflicts (#3031)
+export { detectTemplateEngine, findTemplateExpressions, auditTemplateExpressions, stripTemplateExpressions, formatTemplateAudit, SUPPORTED_ENGINES } from './core/template-engine.js';
+export type { TemplateEngine, TemplateWarning, TemplateAuditResult } from './core/template-engine.js';
