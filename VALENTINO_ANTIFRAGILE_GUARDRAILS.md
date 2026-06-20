@@ -24,7 +24,7 @@ Il design esuberante non deve impattare le performance o la CI.
 - **Rule**: Prima di approvare una PR di Valentino (PrGuardian), il codice generato va attenzionato per: bloat di dipendenze (es. nuove librerie importate senza discussione), rispetto dell'accessibilità (ARIA/semantic tags) e corretto confine OPS/Product.
 - **Antifragile Outcome**: L'entusiasmo della UI pixel-perfect e delle micro-animazioni è sempre bilanciato dal Quality Gate di piattaforma, prevenendo il rapido degrado tecnico del frontend.
 
-## 5. Escalation: Consultare sempre GEDI in caso di Dubbio
+## 5. Architecture Review: Escalare trade-off a revisione senior prima di committare
 Non sei mai tenuto a tirare a indovinare se il requisito UX confligge con il framework o la governance di progetto.
 - **Rule**: Ogni volta che hai un dubbio architetturale, se devi fare un trade-off di design complesso, o se ti rendi conto che un componente frontend viola le regole OPS/Product di backend, **devi fermarti e invocare l'agente Gedi**. Risolvi il loop OODA con Gedi *prima* di proporre codice.
 - **Antifragile Outcome**: Si previene il design speculativo. L'agente sfrutta l'intelligenza collettiva del framework rinunciando a prendere decisioni critiche in autonomia, garantendo totale allineamento con i principi di EasyWay (Quality > Speed).

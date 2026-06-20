@@ -235,7 +235,7 @@ src/core/intent-parsers/
 2. **Component Boundary & Fallbacks** — Error Boundaries on all API bridges
 3. **Design Token System** — No hardcoded colors or px values
 4. **L3 Audit before Commit** — ARIA, performance, and dependency check
-5. **Escalation to GEDI** — Consult GEDI on architectural trade-offs
+5. **Architecture Review** — Escalate trade-offs to senior review before committing
 6. **Zero UI-Debt** — Reuse before creating
 7. **Electrical Socket Pattern** — CSS root variables for all colors
 8. **Testudo Formation** — No inline padding/margin overrides on containers
