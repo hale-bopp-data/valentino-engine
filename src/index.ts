@@ -47,16 +47,20 @@ export { normalizePathname, resolvePageIdByRoute } from './core/manifest.js';
 export { validatePageSpec } from './core/page-spec.js';
 
 // Guardrails
-export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, GUARDRAILS } from './core/guardrails.js';
+export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors, GUARDRAILS } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
 
 // HTML Audit — audit <style> tags and inline styles in HTML (#3028)
-export { auditHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
+export { auditHtml, fixHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
 export type { HtmlAuditViolation, HtmlAuditResult } from './core/audit-html.js';
 
 // Token Validation — detect circular/self-referencing CSS custom properties (#3029)
-export { validateTokens, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
+export { validateTokens, fixSelfReferences, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
 export type { TokenViolation, ValidateTokensResult } from './core/validate-tokens.js';
+
+// Backup — pre-fix file backup + diff (#3035)
+export { createBackup, restoreBackup, backupExists, computeDiff, formatDiff, writeFixed, parseFixArgs } from './core/backup.js';
+export type { BackupResult, DiffLine, DiffHunk } from './core/backup.js';
 
 // Validation probes
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';

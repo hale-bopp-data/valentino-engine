@@ -1,4 +1,4 @@
-import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from './guardrails.js';
+import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors } from './guardrails.js';
 
 export interface HtmlAuditViolation {
   source: 'style-tag' | 'inline-style';
@@ -84,4 +84,22 @@ export function auditHtml(html: string): HtmlAuditResult {
     styleTagCount: styleTags.length,
     inlineStyleCount: inlineStyles.length,
   };
+}
+
+export function fixHtml(html: string): string {
+  let result = html;
+
+  STYLE_TAG_RE.lastIndex = 0;
+  result = result.replace(STYLE_TAG_RE, (full, css) => {
+    const fixed = fixNamedColors(css);
+    return full.replace(css, fixed);
+  });
+
+  INLINE_STYLE_RE.lastIndex = 0;
+  result = result.replace(INLINE_STYLE_RE, (full, element, css) => {
+    const fixed = fixNamedColors(css);
+    return full.replace(`style="${css}"`, `style="${fixed}"`);
+  });
+
+  return result;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from './guardrails.js';
+import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors } from './guardrails.js';
 
 describe('checkNoHardcodedPx', () => {
   it('detects hardcoded px values', () => {
@@ -101,5 +101,29 @@ describe('checkNoNamedColor', () => {
     const violations = checkNoNamedColor('color: red !important;');
     // The regex matches "red" before "!important" — needs "!" in pattern
     expect(violations.length).toBeGreaterThanOrEqual(0); // flexible for now
+  });
+});
+
+describe('fixNamedColors', () => {
+  it('replaces named color with var()', () => {
+    const result = fixNamedColors('color: red;');
+    expect(result).toBe('color: var(--valentino-color-red);');
+  });
+
+  it('replaces multiple colors across lines', () => {
+    const result = fixNamedColors('color: red;\nbackground: blue;');
+    expect(result).toContain('var(--valentino-color-red)');
+    expect(result).toContain('var(--valentino-color-blue)');
+  });
+
+  it('preserves non-color values', () => {
+    const result = fixNamedColors('display: none;\ncolor: red;');
+    expect(result).toContain('display: none;');
+    expect(result).toContain('var(--valentino-color-red)');
+  });
+
+  it('returns unchanged CSS when no named colors', () => {
+    const css = 'color: var(--primary);\ndisplay: flex;';
+    expect(fixNamedColors(css)).toBe(css);
   });
 });
