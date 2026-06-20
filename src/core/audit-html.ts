@@ -1,4 +1,5 @@
 import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors } from './guardrails.js';
+import type { GuardrailOptions } from './guardrails.js';
 
 export interface HtmlAuditViolation {
   source: 'style-tag' | 'inline-style';
@@ -41,21 +42,21 @@ export function extractInlineStyles(html: string): { element: string; css: strin
   return results;
 }
 
-function auditCssBlock(css: string): string[] {
+function auditCssBlock(css: string, options?: GuardrailOptions): string[] {
   return [
-    ...checkNoHardcodedPx(css),
-    ...checkNoHardcodedColor(css),
-    ...checkNoNamedColor(css),
+    ...checkNoHardcodedPx(css, options),
+    ...checkNoHardcodedColor(css, options),
+    ...checkNoNamedColor(css, options),
   ];
 }
 
-export function auditHtml(html: string): HtmlAuditResult {
+export function auditHtml(html: string, options?: GuardrailOptions): HtmlAuditResult {
   const violations: HtmlAuditViolation[] = [];
   const styleTags = extractStyleTagCss(html);
   const inlineStyles = extractInlineStyles(html);
 
   for (const block of styleTags) {
-    const cssViolations = auditCssBlock(block.css);
+    const cssViolations = auditCssBlock(block.css, options);
     for (const msg of cssViolations) {
       const relLine = parseInt(msg.match(/Line (\d+)/)?.[1] || '0', 10);
       violations.push({
@@ -67,7 +68,7 @@ export function auditHtml(html: string): HtmlAuditResult {
   }
 
   for (const inline of inlineStyles) {
-    const cssViolations = auditCssBlock(inline.css);
+    const cssViolations = auditCssBlock(inline.css, options);
     for (const msg of cssViolations) {
       violations.push({
         source: 'inline-style',

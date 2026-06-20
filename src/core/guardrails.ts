@@ -5,6 +5,10 @@
 
 import { CSS_NAMED_COLORS } from './css-named-colors.js';
 
+export interface GuardrailOptions {
+  allowTokenDefinitions?: boolean;
+}
+
 export const GUARDRAILS = {
   /** G1: No hardcoded px values in component overrides */
   NO_HARDCODED_PX: /(?<!\d)(\d+)px(?!\s*[/*])/,
@@ -16,10 +20,17 @@ export const GUARDRAILS = {
   NO_INLINE_STYLE: /\.style\.(padding|margin|color|background)\s*=/,
 } as const;
 
-export function checkNoHardcodedPx(css: string): string[] {
+const TOKEN_DEFINITION_RE = /^\s*--[\w-]+\s*:/;
+
+function isTokenDefinition(line: string): boolean {
+  return TOKEN_DEFINITION_RE.test(line);
+}
+
+export function checkNoHardcodedPx(css: string, options?: GuardrailOptions): string[] {
   const violations: string[] = [];
   const lines = css.split('\n');
   lines.forEach((line, i) => {
+    if (options?.allowTokenDefinitions && isTokenDefinition(line)) return;
     if (GUARDRAILS.NO_HARDCODED_PX.test(line)) {
       violations.push(`Line ${i + 1}: Hardcoded px detected — use --valentino-rhythm-* variables. "${line.trim()}"`);
     }
@@ -27,10 +38,11 @@ export function checkNoHardcodedPx(css: string): string[] {
   return violations;
 }
 
-export function checkNoHardcodedColor(css: string): string[] {
+export function checkNoHardcodedColor(css: string, options?: GuardrailOptions): string[] {
   const violations: string[] = [];
   const lines = css.split('\n');
   lines.forEach((line, i) => {
+    if (options?.allowTokenDefinitions && isTokenDefinition(line)) return;
     if (GUARDRAILS.NO_HARDCODED_COLOR.test(line)) {
       violations.push(`Line ${i + 1}: Hardcoded color detected — use CSS root variables. "${line.trim()}"`);
     }
@@ -45,10 +57,11 @@ export function checkNoHardcodedColor(css: string): string[] {
  */
 const CSS_VALUE_WORD_RE = /:\s*([a-z]+)\s*[;!}]/gi;
 
-export function checkNoNamedColor(css: string): string[] {
+export function checkNoNamedColor(css: string, options?: GuardrailOptions): string[] {
   const violations: string[] = [];
   const lines = css.split('\n');
   lines.forEach((line, i) => {
+    if (options?.allowTokenDefinitions && isTokenDefinition(line)) return;
     CSS_VALUE_WORD_RE.lastIndex = 0;
     let match;
     while ((match = CSS_VALUE_WORD_RE.exec(line)) !== null) {

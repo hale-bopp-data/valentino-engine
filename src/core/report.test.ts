@@ -48,6 +48,15 @@ describe('generateReport — CSS', () => {
     const secSection = report.sections.find(s => s.name === 'Security Certification');
     expect(secSection).toBeDefined();
   });
+
+  it('skips token definitions with allowTokenDefinitions option', () => {
+    const file = path.join(tmpDir, 'tokens.css');
+    fs.writeFileSync(file, ':root {\n  --vr-12: 12px;\n  --vc-accent: #0072bc;\n}\n.btn { display: flex; }');
+    const without = generateReport(file);
+    const withOption = generateReport(file, { allowTokenDefinitions: true });
+    expect(without.totalViolations).toBeGreaterThan(0);
+    expect(withOption.totalViolations).toBe(0);
+  });
 });
 
 describe('generateReport — HTML', () => {
