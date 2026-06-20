@@ -1,0 +1,421 @@
+#!/usr/bin/env bash
+# ============================================================================
+# EasyWay Pre-Push Hook — Testudo Formation (Scudo 3)
+# ============================================================================
+# Seven-layer pre-push defense:
+#   0.0 Refspec Mismatch   — BLOCKS push where local ref name != remote ref name (S287)
+#   0.  Branch Policy      — BLOCKS push to protected branches (main, develop)
+#   0.5 Repo Identity      — BLOCKS push if directory ≠ remote repo (cross-repo guard)
+#   0.6 Branch Naming      — BLOCKS push if branch name is not kebab-case (S251)
+#   0.7 Inline Credentials — BLOCKS push if remote URL has embedded creds (S285/S297)
+#   1.  Semaphore Check    — blocks push if repo is occupied (red/yellow+other)
+#   2.  Governance Guard   — warns/blocks if .cursorrules or AGENTS.md missing
+#   3.  Orphan Guard       — blocks push to branches with completed PRs
+#
+# Escape hatches:
+#   REFSPEC_SKIP=1         — bypass refspec mismatch check (sconsigliato)
+#   SEMAPHORE_SKIP=1       — bypass semaphore check
+#   GOVERNANCE_SKIP=1      — bypass governance file check
+#   ADO_SKIP_PR_CHECK=1    — bypass orphan guard
+#   IDENTITY_SKIP=1        — bypass repo identity check
+#   NAMING_SKIP=1          — bypass branch naming guard
+#   INLINE_CREDS_SKIP=1    — bypass inline credentials check (S285)
+#
+# Principi: G10 (Testudo), G2 (Antifragile), G19 (Invisible Shield), G16 (Presa Elettrica)
+# Sessions: S140 (Orphan Guard), S142 (Semaphore — GEDI Case #99), S143 (Governance — GEDI Case #104)
+#           S246 (Repo Identity Guard — GEDI OODA: observe before act)
+#           S287 (Refspec Mismatch Guard — GEDI Case #39, bypass via push refspec)
+# ============================================================================
+
+# --- Guard Telemetry (G16, GEDI Case #103) ---
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+for _t in "${HOOK_DIR}/guard-telemetry.sh" \
+          "/c/EW/easyway/infra/scripts/git-hooks/guard-telemetry.sh" \
+          "$HOME/easyway-infra/scripts/git-hooks/guard-telemetry.sh"; do
+  if [[ -f "$_t" ]]; then source "$_t"; break; fi
+done
+type _guard_log &>/dev/null || _guard_log() { :; }  # no-op fallback
+
+# ── Layer 0.0: Refspec Mismatch Guard (S287 — GEDI Case #39) ──────────────
+# BLOCKS: git push origin <local>:<remote> where basename(local) != basename(remote)
+# Catches the "push refspec without checkout" bypass that defeats post-checkout hooks.
+# Why: tutti gli altri layer leggono HEAD, NESSUNO leggeva stdin (il payload reale del push).
+# Un agente puo' fare `git push origin develop:refs/heads/merge/...` mentre HEAD e' develop:
+#   - Layer 0 (branch policy): destination non e' protected → passa
+#   - Layer 0.6 (naming): controlla HEAD (develop = exempt) → passa
+#   - post-checkout: mai triggerato → passa
+# Risultato: branch arbitraria creata su remote, doctrine 3-Layer VCS aggirata.
+#
+# Questo layer e' il PRIMO a leggere stdin e validare il payload reale del push.
+# Logica: se entrambe le ref sono refs/heads/*, allora basename(local) DEVE = basename(remote).
+# Tag, notes, replace refs sono permessi (out of scope).
+# Escape hatch: REFSPEC_SKIP=1 (solo se stai consciamente rinominando una branch).
+
+# S314: capture pushed branch names for downstream layers (policy, naming).
+# stdin is consumed here by Layer 0.0 and saved in _PUSHED_BRANCHES.
+_PUSHED_BRANCHES=()
+
+if [[ "${REFSPEC_SKIP:-}" != "1" ]]; then
+  # Consume stdin once and process. Other layers below use _PUSHED_BRANCHES, not stdin.
+  while IFS=' ' read -r _RM_LOCAL_REF _RM_LOCAL_SHA _RM_REMOTE_REF _RM_REMOTE_SHA; do
+    [[ -z "$_RM_LOCAL_REF" ]] && continue  # skip deletes (empty local)
+
+    # Save pushed branch name for downstream layers
+    if [[ "$_RM_REMOTE_REF" == refs/heads/* ]]; then
+      _PUSHED_BRANCHES+=("${_RM_REMOTE_REF#refs/heads/}")
+    fi
+
+    # Only validate branch refs. Tags/notes/replace are out of scope.
+    if [[ "$_RM_LOCAL_REF" == refs/heads/* ]] && [[ "$_RM_REMOTE_REF" == refs/heads/* ]]; then
+      _RM_LOCAL_NAME="${_RM_LOCAL_REF#refs/heads/}"
+      _RM_REMOTE_NAME="${_RM_REMOTE_REF#refs/heads/}"
+
+      if [[ "$_RM_LOCAL_NAME" != "$_RM_REMOTE_NAME" ]]; then
+        echo ""
+        echo "================================================================"
+        echo "  REFSPEC MISMATCH GUARD — Push bloccato (S287)"
+        echo "================================================================"
+        echo ""
+        echo "  Local ref:  $_RM_LOCAL_NAME"
+        echo "  Remote ref: $_RM_REMOTE_NAME"
+        echo ""
+        echo "  Stai pushando il contenuto di una branch sotto un nome remoto"
+        echo "  diverso. Questo pattern aggira il deploy gate (Testudo Formation"
+        echo "  post-checkout) perche' nessun checkout viene mai eseguito."
+        echo ""
+        echo "  Vedi GEDI Case #39 (S287 — Bypass Testudo via push refspec)."
+        echo ""
+        echo "  Cosa fare:"
+        echo "    1. Checkout della branch destinazione: git checkout -b $_RM_REMOTE_NAME"
+        echo "    2. Push normale: git push -u origin $_RM_REMOTE_NAME"
+        echo "  Bypass (sconsigliato): REFSPEC_SKIP=1 git push ..."
+        echo ""
+        echo "================================================================"
+        _guard_log "refspec-guard" "blocking" "local=$_RM_LOCAL_NAME remote=$_RM_REMOTE_NAME"
+        exit 1
+      fi
+    fi
+  done
+else
+  # REFSPEC_SKIP=1: stdin not consumed by Layer 0.0, capture for downstream layers
+  while IFS=' ' read -r _RM_LOCAL_REF _RM_LOCAL_SHA _RM_REMOTE_REF _RM_REMOTE_SHA; do
+    if [[ "$_RM_REMOTE_REF" == refs/heads/* ]]; then
+      _PUSHED_BRANCHES+=("${_RM_REMOTE_REF#refs/heads/}")
+    fi
+  done
+fi
+
+# ── Layer 0: Branch Policy Guard (S157 — #355) ───────────────────────────
+# Mechanical block: NO push to protected branches. Period.
+# Reads policy from factory-vcs.json. No discretion, no exceptions.
+
+POLICY_GUARD=""
+for p in \
+  "${HOOK_DIR}/branch-policy-guard.sh" \
+  "/c/EW/easyway/infra/scripts/git-hooks/branch-policy-guard.sh" \
+  "$HOME/easyway-infra/scripts/git-hooks/branch-policy-guard.sh"; do
+  if [[ -f "$p" ]]; then
+    POLICY_GUARD="$p"
+    break
+  fi
+done
+
+if [[ -n "$POLICY_GUARD" ]]; then
+  source "$POLICY_GUARD"
+  branch_policy_guard || exit 1
+fi
+
+# ── Layer 0.5: Repo Identity Guard (S246 — cross-repo push prevention) ───
+# OODA Observe: verify that the directory we're in matches the remote repo.
+# Problem (S144, S193, S246): agents push from wrong CWD → branch lands on
+# wrong repo silently. This layer makes it mechanically impossible.
+# Compares: basename of git toplevel vs repo name in remote URL.
+# Blocking: YES. No discretion. Escape hatch: IDENTITY_SKIP=1.
+
+if [[ "${IDENTITY_SKIP:-}" != "1" ]]; then
+  _ID_REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+  _ID_DIR_NAME=$(basename "$_ID_REPO_ROOT" 2>/dev/null || echo "")
+
+  # S314 fix: in a worktree, --show-toplevel gives the worktree path (e.g. agents-wt-1234-fix).
+  # Use the main repo directory name instead (via --git-common-dir → parent of .git/).
+  _ID_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
+  if [[ "$_ID_COMMON_DIR" == *"/worktrees/"* ]] || [[ "$_ID_COMMON_DIR" != *".git" ]] || [[ "$_ID_COMMON_DIR" != "$_ID_REPO_ROOT/.git" ]]; then
+    # We're in a worktree — resolve the main repo directory
+    _ID_MAIN_GIT_DIR=$(cd "$_ID_COMMON_DIR" 2>/dev/null && pwd || echo "")
+    if [[ -n "$_ID_MAIN_GIT_DIR" ]]; then
+      _ID_DIR_NAME=$(basename "$(dirname "$_ID_MAIN_GIT_DIR")" 2>/dev/null || echo "$_ID_DIR_NAME")
+    fi
+  fi
+
+  _ID_REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+  _ID_REMOTE_REPO=""
+
+  if [[ "$_ID_REMOTE_URL" =~ /_git/([^/]+)$ ]]; then
+    _ID_REMOTE_REPO="${BASH_REMATCH[1]}"
+  elif [[ "$_ID_REMOTE_URL" =~ /([^/]+)\.git$ ]]; then
+    _ID_REMOTE_REPO="${BASH_REMATCH[1]}"
+  fi
+
+  if [[ -n "$_ID_DIR_NAME" ]] && [[ -n "$_ID_REMOTE_REPO" ]]; then
+    # Normalize: strip common prefixes for comparison
+    # easyway-agents dir might be just "agents", remote is "easyway-agents"
+    _ID_DIR_NORM="$_ID_DIR_NAME"
+    _ID_REMOTE_NORM="$_ID_REMOTE_REPO"
+    # Strip "easyway-" prefix if present on either side
+    _ID_DIR_CORE="${_ID_DIR_NORM#easyway-}"
+    _ID_REMOTE_CORE="${_ID_REMOTE_NORM#easyway-}"
+    # Also strip "hale-bopp-" for hale-bopp repos
+    _ID_DIR_CORE="${_ID_DIR_CORE#hale-bopp-}"
+    _ID_REMOTE_CORE="${_ID_REMOTE_CORE#hale-bopp-}"
+
+    if [[ "$_ID_DIR_CORE" != "$_ID_REMOTE_CORE" ]]; then
+      echo ""
+      echo "REPO IDENTITY GUARD: directory/remote mismatch!"
+      echo "   Directory: $_ID_DIR_NAME (core: $_ID_DIR_CORE)"
+      echo "   Remote:    $_ID_REMOTE_REPO (core: $_ID_REMOTE_CORE)"
+      echo ""
+      echo "   You are pushing from the WRONG directory."
+      echo "   This would send your branch to the wrong repo."
+      echo ""
+      echo "   Fix: cd /c/EW/easyway/$_ID_REMOTE_CORE && git push"
+      echo "   Bypass (emergenza): IDENTITY_SKIP=1 git push"
+      echo ""
+      _guard_log "identity-guard" "blocking" "dir=$_ID_DIR_NAME remote=$_ID_REMOTE_REPO"
+      exit 1
+    fi
+  fi
+fi
+
+# ── Layer 0.6: Branch Naming Guard (S251 — kebab-case taxonomy) ──────────
+# Enforces: prefix/NNN-kebab-slug format.
+# Valid: feat/990-add-healthcheck, fix/123-correct-typo
+# Invalid: feat/Add HealthCheck, FEAT/990-Fix, feat/no-number
+# Escape hatch: NAMING_SKIP=1
+
+if [[ "${NAMING_SKIP:-}" != "1" ]]; then
+  # S314 fix: check pushed branches (_PUSHED_BRANCHES), not HEAD.
+  # An agent on develop pushing feat/xxx should validate feat/xxx, not develop.
+  _NAMING_BRANCHES_TO_CHECK=()
+  if [[ ${#_PUSHED_BRANCHES[@]} -gt 0 ]] 2>/dev/null; then
+    _NAMING_BRANCHES_TO_CHECK=("${_PUSHED_BRANCHES[@]}")
+  else
+    _NAMING_BRANCHES_TO_CHECK=("$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")")
+  fi
+
+  _NAMING_EXEMPT="^(main|master|develop)$"
+  _NAMING_PATTERN="^(feat|fix|hotfix|docs|refactor|test|chore|context-sync|merge|release|s[0-9]+)/[0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
+
+  for _NAMING_BRANCH in "${_NAMING_BRANCHES_TO_CHECK[@]}"; do
+    if [[ -n "$_NAMING_BRANCH" ]] && ! [[ "$_NAMING_BRANCH" =~ $_NAMING_EXEMPT ]]; then
+      if ! [[ "$_NAMING_BRANCH" =~ $_NAMING_PATTERN ]]; then
+        echo ""
+        echo "BRANCH NAMING GUARD: branch name is not kebab-case"
+        echo "   Branch: $_NAMING_BRANCH"
+        echo ""
+        echo "   Required format: prefix/NNN-kebab-slug"
+        echo "   Examples: feat/990-add-healthcheck, fix/123-correct-typo"
+        echo "   Valid prefixes: feat, fix, docs, refactor, test, chore, context-sync"
+        echo ""
+        echo "   Bypass (emergenza): NAMING_SKIP=1 git push"
+        echo ""
+        _guard_log "naming-guard" "blocking" "branch=$_NAMING_BRANCH"
+        exit 1
+      fi
+    fi
+  done
+fi
+
+# ── Layer 0.7: Inline Credentials Guard (S285/S297 — PBI #1185) ─────────
+# BLOCKS: push if the remote URL contains inline credentials (https://user:pass@host).
+# Born from S285: 25 .git/config on server had PAT embedded in remote URL.
+# This is the pre-push companion of pre-commit check 3.7.
+# Unlike pre-commit (which scans staged file content), this checks the actual
+# remote URL that git will use for this push — the live config, not file content.
+# Escape hatch: INLINE_CREDS_SKIP=1 (logged as violation)
+
+if [[ "${INLINE_CREDS_SKIP:-}" != "1" ]]; then
+  _IC_REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+  _IC_CRED_PATTERN='https?://[^/[:space:]]*:[^@[:space:]]+@'
+
+  if [[ "$_IC_REMOTE_URL" =~ $_IC_CRED_PATTERN ]]; then
+    # Redact the credential for display (show user:*** instead of user:actualpassword)
+    _IC_REDACTED=$(echo "$_IC_REMOTE_URL" | sed -E 's|(https?://[^/:]+):[^@]+@|\1:***@|')
+    echo ""
+    echo "================================================================"
+    echo "  INLINE CREDENTIALS GUARD -- Push blocked (S285/S297)"
+    echo "================================================================"
+    echo ""
+    echo "  Remote URL contains embedded credentials:"
+    echo "    $_IC_REDACTED"
+    echo ""
+    echo "  This is a security risk: credentials in .git/config leak via"
+    echo "  mirror, backup, and any tool that reads the config."
+    echo ""
+    echo "  Fix:"
+    echo "    1. Sanitize: bash easyway-infra/scripts/ops/sanitize-git-configs.sh --execute"
+    echo "    2. Or manually: git remote set-url origin <clean-url>"
+    echo "    3. Use credential helper: git config credential.helper /path/to/git-credential-env.sh"
+    echo ""
+    echo "  Bypass (emergenza): INLINE_CREDS_SKIP=1 git push"
+    echo ""
+    echo "================================================================"
+    _guard_log "inline-creds-guard" "blocking" "remote URL contains inline credentials (redacted: $_IC_REDACTED)"
+    exit 1
+  fi
+else
+  _guard_log "inline-creds-guard" "skipped" "INLINE_CREDS_SKIP=1 -- escape hatch used"
+fi
+
+# ── Layer 1: Semaphore Check ──────────────────────────────────────────────
+
+# Find semaphore-check.sh: same dir as hook, or infra source
+SEMAPHORE_SCRIPT=""
+for p in \
+  "${HOOK_DIR}/semaphore-check.sh" \
+  "/c/EW/easyway/infra/scripts/git-hooks/semaphore-check.sh" \
+  "$HOME/easyway-infra/scripts/git-hooks/semaphore-check.sh"; do
+  if [[ -f "$p" ]]; then
+    SEMAPHORE_SCRIPT="$p"
+    break
+  fi
+done
+
+if [[ -n "$SEMAPHORE_SCRIPT" ]]; then
+  source "$SEMAPHORE_SCRIPT"
+  semaphore_check
+  sem_result=$?
+  if [[ $sem_result -eq 1 ]]; then
+    _guard_log "semaphore-check" "blocking" "repo occupied — push blocked"
+    exit 1  # Blocked by semaphore
+  fi
+  # sem_result=2 is a warning, continue
+fi
+
+# ── Layer 2: Governance File Guard (G16 Presa Elettrica, GEDI Case #104) ──
+
+if [[ "${GOVERNANCE_SKIP:-}" != "1" ]]; then
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+  # Bug #1631: worktree-aware — resolve to parent repo, not the worktree path
+  if [[ "$REPO_ROOT" == *"/_worktrees/"* ]] || [[ "$REPO_ROOT" == *"\\_worktrees\\"* ]]; then
+    GIT_COMMON=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
+    if [[ -n "$GIT_COMMON" ]]; then
+      REPO_ROOT=$(cd "$(dirname "$GIT_COMMON")" 2>/dev/null && pwd || echo "$REPO_ROOT")
+    fi
+  fi
+  GOV_MISSING=()
+
+  [[ ! -f "${REPO_ROOT}/.cursorrules" ]] && GOV_MISSING+=(".cursorrules")
+  # AGENTS.md check: accept AGENTS.md or agents*.md (case-insensitive glob)
+  AGENTS_FOUND=false
+  for _af in "${REPO_ROOT}"/AGENTS.md "${REPO_ROOT}"/agents*.md "${REPO_ROOT}"/AGENT_ALL.md; do
+    [[ -f "$_af" ]] && AGENTS_FOUND=true && break
+  done
+  [[ "$AGENTS_FOUND" == "false" ]] && GOV_MISSING+=("AGENTS.md")
+
+  if [[ ${#GOV_MISSING[@]} -gt 0 ]]; then
+    REPO_NAME_GOV=$(basename "$REPO_ROOT")
+    echo ""
+    echo "⚠️  GOVERNANCE GUARD: repo '$REPO_NAME_GOV' is missing: ${GOV_MISSING[*]}"
+    echo "   Every EasyWay repo MUST have .cursorrules + AGENTS.md (G16 Presa Elettrica)."
+    echo ""
+    echo "   Fix:"
+    echo "     1. Copy from Context Sync: n8n/.tmp/context-sync/easyway-<repo>/.cursorrules"
+    echo "     2. Create AGENTS.md with agent catalog for this repo"
+    echo "     3. Bypass (emergenza): GOVERNANCE_SKIP=1 git push"
+    echo ""
+    _guard_log "governance-guard" "advisory" "missing ${GOV_MISSING[*]} in $REPO_NAME_GOV"
+    # Advisory, not blocking — first iteration (G14 Start Small)
+    # Will become blocking after all repos are compliant
+  fi
+fi
+
+# ── Layer 3: Orphan Commit Guard ──────────────────────────────────────────
+
+# Skip if ADO_SKIP_PR_CHECK is set (escape hatch)
+if [[ "${ADO_SKIP_PR_CHECK:-}" == "1" ]]; then
+  exit 0
+fi
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+# Skip orphan check for non-feature branches (main/develop already handled by Layer 0)
+if [[ -z "$BRANCH" ]] || [[ "$BRANCH" =~ ^(release|hotfix|merge)/ ]]; then
+  exit 0
+fi
+
+# Only check feature-like branches
+if ! [[ "$BRANCH" =~ ^(feat|fix|docs|chore|refactor|test)/ ]]; then
+  exit 0
+fi
+
+# Detect repo name from remote URL
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+REPO_NAME=""
+if [[ "$REMOTE_URL" =~ /_git/([^/]+)$ ]]; then
+  REPO_NAME="${BASH_REMATCH[1]}"
+elif [[ "$REMOTE_URL" =~ /([^/]+)\.git$ ]]; then
+  REPO_NAME="${BASH_REMATCH[1]}"
+fi
+
+if [[ -z "$REPO_NAME" ]]; then
+  exit 0  # Can't determine repo, skip silently
+fi
+
+# Find ado-remote.sh
+ADO_REMOTE=""
+for p in \
+  "/c/EW/easyway/ado/scripts/ado-remote.sh" \
+  "$HOME/easyway-ado/scripts/ado-remote.sh" \
+  "$(git rev-parse --show-toplevel 2>/dev/null)/../ado/scripts/ado-remote.sh"; do
+  if [[ -f "$p" ]]; then
+    ADO_REMOTE="$p"
+    break
+  fi
+done
+
+if [[ -z "$ADO_REMOTE" ]]; then
+  exit 0  # No ado-remote.sh found, skip silently
+fi
+
+# Query ADO for completed PRs on this branch (timeout 10s, non-blocking on failure)
+echo "🛡️  Orphan Guard: checking PR status for $BRANCH..."
+
+PR_STATUS=$(bash "$ADO_REMOTE" ado-curl general GET \
+  "https://dev.azure.com/EasyWayData/EasyWay-DataPortal/_apis/git/repositories/${REPO_NAME}/pullrequests?searchCriteria.sourceRefName=refs/heads/${BRANCH}&searchCriteria.status=completed&\$top=1&api-version=7.1" \
+  2>/dev/null | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    prs = data.get('value', [])
+    if prs:
+        pr = prs[0]
+        print(f\"MERGED|{pr['pullRequestId']}|{pr['title'][:60]}\")
+    else:
+        print('CLEAN')
+except:
+    print('ERROR')
+" 2>/dev/null) || PR_STATUS="ERROR"
+
+if [[ "$PR_STATUS" == "ERROR" ]] || [[ "$PR_STATUS" == "CLEAN" ]]; then
+  echo "✅ Orphan Guard: branch is clean."
+  exit 0
+fi
+
+if [[ "$PR_STATUS" == MERGED* ]]; then
+  PR_ID=$(echo "$PR_STATUS" | cut -d'|' -f2)
+  PR_TITLE=$(echo "$PR_STATUS" | cut -d'|' -f3)
+  echo ""
+  echo "❌ ORPHAN GUARD: Branch '$BRANCH' has a MERGED PR #${PR_ID}!"
+  echo "   PR: $PR_TITLE"
+  _guard_log "orphan-guard" "blocking" "branch has merged PR #${PR_ID}: ${PR_TITLE}"
+  echo ""
+  echo "   Questo branch ha gia una PR completata. Pushare qui creerebbe commit orfani."
+  echo "   Soluzioni:"
+  echo "     1. Crea un nuovo branch:  git checkout -b feat/s140-next-thing"
+  echo "     2. Cherry-pick i commit:  git cherry-pick <commit-hash>"
+  echo "     3. Bypass (emergenza):    ADO_SKIP_PR_CHECK=1 git push"
+  echo ""
+  exit 1
+fi
+
+exit 0

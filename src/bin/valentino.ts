@@ -18,6 +18,8 @@ import { runThemeAudit } from './commands/theme-audit.js';
 import { runSpool } from './commands/spool.js';
 import { runFigmaImport } from './commands/figma.js';
 import { runImageGenerate } from './commands/image.js';
+import { runAuditHtml } from './commands/audit-html.js';
+import { runValidateTokens } from './commands/validate-tokens.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -94,6 +96,14 @@ switch (command) {
         }
         break;
 
+    case 'audit-html':
+        runAuditHtml(args);
+        break;
+
+    case 'validate-tokens':
+        runValidateTokens(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
@@ -117,6 +127,8 @@ Usage:
   valentino spool <directory> [--out <file>]                          Analyze site CSS → Valentino tokens
   valentino figma import --file <figma.json> [--template id]           Import Figma file → PageSpec
   valentino image generate --prompt "desc" [--endpoint url] [options]  Generate image (placeholder or external)
+  valentino audit-html <file.html>                                  Audit HTML for CSS violations (inline + <style>)
+  valentino validate-tokens <file.css>                              Detect self-referencing/circular CSS tokens
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
