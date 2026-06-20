@@ -50,6 +50,14 @@ export { validatePageSpec } from './core/page-spec.js';
 export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, GUARDRAILS } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
 
+// HTML Audit — audit <style> tags and inline styles in HTML (#3028)
+export { auditHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
+export type { HtmlAuditViolation, HtmlAuditResult } from './core/audit-html.js';
+
+// Token Validation — detect circular/self-referencing CSS custom properties (#3029)
+export { validateTokens, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
+export type { TokenViolation, ValidateTokensResult } from './core/validate-tokens.js';
+
 // Validation probes
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';
 export type { ContrastLevel, ContrastResult } from './core/contrast.js';
