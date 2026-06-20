@@ -27,6 +27,7 @@ import { runReport } from './commands/report.js';
 import { runWatch } from './commands/watch.js';
 import { runGridContract } from './commands/grid-contract.js';
 import { runTemplateAudit } from './commands/template-audit.js';
+import { runReviewNotes } from './commands/review-notes.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -139,6 +140,10 @@ switch (command) {
         runTemplateAudit(args);
         break;
 
+    case 'review-notes':
+        runReviewNotes(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
@@ -175,6 +180,10 @@ Usage:
   valentino grid-contract init <file.html> [--selector s] [--out f]  Generate grid layout contract from DOM
   valentino grid-contract verify <file.html> --contract <file.json>  Verify DOM matches grid contract
   valentino template-audit <file> [--template jinja2|twig|ejs]       Detect template/CSS conflicts (auto-detect engine)
+  valentino review-notes new <name> [--mode full] [--out file.json]  Create review session
+  valentino review-notes add <session.json> "comment" [--severity]   Add note to session
+  valentino review-notes export <session.json> [--out file.md]       Export session to markdown
+  valentino review-notes stats <session.json>                        Session statistics
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);

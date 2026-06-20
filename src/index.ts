@@ -258,3 +258,7 @@ export type { GridSlot, GridContract, GridVerifyViolation, GridVerifyResult } fr
 // Template Engine Awareness — detect template/CSS conflicts (#3031)
 export { detectTemplateEngine, findTemplateExpressions, auditTemplateExpressions, stripTemplateExpressions, formatTemplateAudit, SUPPORTED_ENGINES } from './core/template-engine.js';
 export type { TemplateEngine, TemplateWarning, TemplateAuditResult } from './core/template-engine.js';
+
+// Review Notes — structured review annotations for LLM/operator handoff (#3045)
+export { createNote, updateNote, createSession, addNote, updateSessionStatus, validateNote, validateSession, exportSessionMarkdown, parseSessionJson, sessionStats, NOTE_TYPES, SEVERITIES, OUTCOMES, STATES } from './core/review-notes.js';
+export type { NoteType, NoteSeverity, NoteOutcome, NoteState, ReviewMode, SessionStatus, NoteRecord, ReviewSession, ValidationError } from './core/review-notes.js';
