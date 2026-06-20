@@ -103,3 +103,24 @@ export function validateTokens(css: string): ValidateTokensResult {
     tokenCount: tokens.size,
   };
 }
+
+export function fixSelfReferences(css: string): string {
+  const tokens = parseTokenDeclarations(css);
+  const violations = detectCycles(tokens);
+  const selfRefTokens = new Set(
+    violations
+      .filter(v => v.type === 'self-reference')
+      .map(v => v.token)
+  );
+
+  if (selfRefTokens.size === 0) return css;
+
+  return css.split('\n').map(line => {
+    CUSTOM_PROP_DECL_RE.lastIndex = 0;
+    const match = CUSTOM_PROP_DECL_RE.exec(line);
+    if (match && selfRefTokens.has(match[1])) {
+      return line.replace(match[2].trim(), 'initial /* VALENTINO-FIX: was self-referential */');
+    }
+    return line;
+  }).join('\n');
+}

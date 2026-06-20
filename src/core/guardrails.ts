@@ -60,3 +60,18 @@ export function checkNoNamedColor(css: string): string[] {
   });
   return violations;
 }
+
+const NAMED_COLOR_REPLACE_RE = /:\s*([a-z]+)\s*([;!}])/gi;
+
+export function fixNamedColors(css: string): string {
+  const lines = css.split('\n');
+  return lines.map(line => {
+    NAMED_COLOR_REPLACE_RE.lastIndex = 0;
+    return line.replace(NAMED_COLOR_REPLACE_RE, (full, word, terminator) => {
+      if (CSS_NAMED_COLORS.has(word.toLowerCase())) {
+        return `: var(--valentino-color-${word.toLowerCase()})${terminator}`;
+      }
+      return full;
+    });
+  }).join('\n');
+}

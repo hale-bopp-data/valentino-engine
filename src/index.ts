@@ -47,16 +47,28 @@ export { normalizePathname, resolvePageIdByRoute } from './core/manifest.js';
 export { validatePageSpec } from './core/page-spec.js';
 
 // Guardrails
-export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, GUARDRAILS } from './core/guardrails.js';
+export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors, GUARDRAILS } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
 
 // HTML Audit — audit <style> tags and inline styles in HTML (#3028)
-export { auditHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
+export { auditHtml, fixHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
 export type { HtmlAuditViolation, HtmlAuditResult } from './core/audit-html.js';
 
 // Token Validation — detect circular/self-referencing CSS custom properties (#3029)
-export { validateTokens, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
+export { validateTokens, fixSelfReferences, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
 export type { TokenViolation, ValidateTokensResult } from './core/validate-tokens.js';
+
+// Backup — pre-fix file backup + diff (#3035)
+export { createBackup, restoreBackup, backupExists, computeDiff, formatDiff, writeFixed, parseFixArgs } from './core/backup.js';
+export type { BackupResult, DiffLine, DiffHunk } from './core/backup.js';
+
+// Refactor — dry-run preview + self-ref detection (#3036)
+export { previewRefactor, detectNewSelfReferences, countNewTokenReferences, applyFixes, detectFileType, formatProposal } from './core/refactor.js';
+export type { RefactorProposal, SelfRefWarning } from './core/refactor.js';
+
+// Security Certification — UI surface audit (#3039)
+export { certifySecurity, certifySecurityCss, checkInlineStyles, checkEventHandlers, checkTokenOverrides, formatCertification } from './core/certify-security.js';
+export type { SecurityViolation, SecurityCertification } from './core/certify-security.js';
 
 // Validation probes
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';

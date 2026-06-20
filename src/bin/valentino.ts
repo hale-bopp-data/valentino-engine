@@ -20,6 +20,8 @@ import { runFigmaImport } from './commands/figma.js';
 import { runImageGenerate } from './commands/image.js';
 import { runAuditHtml } from './commands/audit-html.js';
 import { runValidateTokens } from './commands/validate-tokens.js';
+import { runRefactor } from './commands/refactor.js';
+import { runCertify } from './commands/certify.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -104,6 +106,14 @@ switch (command) {
         runValidateTokens(args);
         break;
 
+    case 'refactor':
+        runRefactor(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
+    case 'certify':
+        runCertify(args);
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
@@ -111,6 +121,7 @@ switch (command) {
 Usage:
   valentino init [name] [--template id] [--lang code] [--git url]  Create a new project
   valentino audit <file.css>                                    Audit CSS for guardrail violations
+  valentino audit <file.css> --fix [--no-backup]                 Auto-fix + backup original
   valentino validate <spec.json>                                Validate a Runtime PageSpec JSON (V1)
   valentino guardrails                                          List all 10 Sovereign Guardrails
   valentino probe <rhythm|hero|integrity|all> <spec.json>       Run validation probes
@@ -128,7 +139,11 @@ Usage:
   valentino figma import --file <figma.json> [--template id]           Import Figma file → PageSpec
   valentino image generate --prompt "desc" [--endpoint url] [options]  Generate image (placeholder or external)
   valentino audit-html <file.html>                                  Audit HTML for CSS violations (inline + <style>)
+  valentino audit-html <file.html> --fix [--no-backup]               Auto-fix + backup original
   valentino validate-tokens <file.css>                              Detect self-referencing/circular CSS tokens
+  valentino validate-tokens <file.css> --fix [--no-backup]           Auto-fix self-refs + backup original
+  valentino refactor <file> [--dry-run] [--apply] [--no-backup]      Preview + apply refactor with self-ref guard
+  valentino certify --security <file.html|file.css>                  Security audit: inline styles, token overrides, event handlers
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
