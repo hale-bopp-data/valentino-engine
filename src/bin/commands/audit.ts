@@ -1,18 +1,21 @@
 import { readFileSync } from 'fs';
 import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors } from '../../core/guardrails.js';
+import type { GuardrailOptions } from '../../core/guardrails.js';
 import { createBackup, computeDiff, formatDiff, writeFixed, parseFixArgs } from '../../core/backup.js';
 
 export function runAudit(args: string[]): void {
     const { fix, noBackup, file } = parseFixArgs(args);
+    const allowTokenDefs = args.includes('--allow-token-definitions');
     if (!file) {
-        console.error('Usage: valentino audit <path-to-css-file> [--fix] [--no-backup]');
+        console.error('Usage: valentino audit <path-to-css-file> [--fix] [--no-backup] [--allow-token-definitions]');
         process.exit(1);
     }
     const css = readFileSync(file, 'utf-8');
+    const opts: GuardrailOptions | undefined = allowTokenDefs ? { allowTokenDefinitions: true } : undefined;
     const all = [
-        ...checkNoHardcodedPx(css),
-        ...checkNoHardcodedColor(css),
-        ...checkNoNamedColor(css),
+        ...checkNoHardcodedPx(css, opts),
+        ...checkNoHardcodedColor(css, opts),
+        ...checkNoNamedColor(css, opts),
     ];
     if (all.length === 0) {
         console.log('✅ No guardrail violations found.');
@@ -43,9 +46,9 @@ export function runAudit(args: string[]): void {
     console.log(`\n${formatDiff(hunks, file)}`);
 
     const remaining = [
-        ...checkNoHardcodedPx(fixed),
-        ...checkNoHardcodedColor(fixed),
-        ...checkNoNamedColor(fixed),
+        ...checkNoHardcodedPx(fixed, opts),
+        ...checkNoHardcodedColor(fixed, opts),
+        ...checkNoNamedColor(fixed, opts),
     ];
     if (remaining.length === 0) {
         console.log('\n✅ All violations fixed.');

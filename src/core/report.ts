@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from './guardrails.js';
+import type { GuardrailOptions } from './guardrails.js';
 import { auditHtml } from './audit-html.js';
 import { validateTokens } from './validate-tokens.js';
 import { certifySecurity, certifySecurityCss } from './certify-security.js';
@@ -24,16 +25,20 @@ export interface UnifiedReport {
   passed: boolean;
 }
 
+export interface ReportOptions {
+  allowTokenDefinitions?: boolean;
+}
+
 function detectType(filePath: string): 'css' | 'html' {
   const lower = filePath.toLowerCase();
   if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'html';
   return 'css';
 }
 
-function auditCssSection(css: string): ReportSection {
-  const px = checkNoHardcodedPx(css);
-  const color = checkNoHardcodedColor(css);
-  const named = checkNoNamedColor(css);
+function auditCssSection(css: string, guardrailOpts?: GuardrailOptions): ReportSection {
+  const px = checkNoHardcodedPx(css, guardrailOpts);
+  const color = checkNoHardcodedColor(css, guardrailOpts);
+  const named = checkNoNamedColor(css, guardrailOpts);
   const all = [...px, ...color, ...named];
   return {
     name: 'CSS Guardrails',
@@ -93,21 +98,24 @@ function extractCss(html: string): string {
   return blocks.join('\n');
 }
 
-export function generateReport(filePath: string): UnifiedReport {
+export function generateReport(filePath: string, options?: ReportOptions): UnifiedReport {
   const content = readFileSync(filePath, 'utf-8');
   const fileType = detectType(filePath);
   const sections: ReportSection[] = [];
+  const guardrailOpts: GuardrailOptions | undefined = options?.allowTokenDefinitions
+    ? { allowTokenDefinitions: true }
+    : undefined;
 
   if (fileType === 'html') {
     sections.push(auditHtmlSection(content));
     const css = extractCss(content);
     if (css.trim()) {
-      sections.push(auditCssSection(css));
+      sections.push(auditCssSection(css, guardrailOpts));
       sections.push(tokenSection(css));
     }
     sections.push(securitySection(content, 'html'));
   } else {
-    sections.push(auditCssSection(content));
+    sections.push(auditCssSection(content, guardrailOpts));
     sections.push(tokenSection(content));
     sections.push(securitySection(content, 'css'));
   }

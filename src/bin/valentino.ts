@@ -148,20 +148,24 @@ switch (command) {
         runReviewNotes(args);
         break;
 
+    case 'mcp':
+        import('../mcp/index.js').catch(e => { console.error('MCP server failed:', e); process.exit(1); });
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v${version} — Antifragile Open Source UI Design Engine
 
 Usage:
   valentino init [name] [--template id] [--lang code] [--git url]  Create a new project
-  valentino audit <file.css>                                    Audit CSS for guardrail violations
-  valentino audit <file.css> --fix [--no-backup]                 Auto-fix + backup original
-  valentino validate <spec.json>                                Validate a Runtime PageSpec JSON (V1)
-  valentino guardrails                                          List all 10 Sovereign Guardrails
-  valentino probe <rhythm|hero|integrity|all> <spec.json>       Run validation probes
-  valentino contrast <foreground> <background> [AA|AAA]         Check WCAG contrast ratio
-  valentino catalog resolve <spec.json> --catalog <catalog.json> Resolve spec with catalog
-  valentino manifest resolve <manifest.json> --route /path      Resolve route to page ID
+  valentino audit <file.css> [--allow-token-definitions]            Audit CSS for guardrail violations
+  valentino audit <file.css> --fix [--no-backup]                    Auto-fix + backup original
+  valentino validate <spec.json>                                    Validate a Runtime PageSpec JSON (V1)
+  valentino guardrails                                              List all 10 Sovereign Guardrails
+  valentino probe <rhythm|hero|integrity|all> <spec.json>           Run validation probes
+  valentino contrast <foreground> <background> [AA|AAA]             Check WCAG contrast ratio
+  valentino catalog resolve <spec.json> --catalog <catalog.json>    Resolve spec with catalog
+  valentino manifest resolve <manifest.json> --route /path          Resolve route to page ID
   valentino llms <manifest.json> [--content c.json] [--site N]  Generate llms.txt + llms-full.txt
   valentino cockpit <spec.json>                                Interactive conversational REPL
   valentino cockpit <spec.json> --serve [--port N]             Web cockpit (browser UI)
@@ -172,14 +176,14 @@ Usage:
   valentino spool <directory> [--out <file>]                          Analyze site CSS → Valentino tokens
   valentino figma import --file <figma.json> [--template id]           Import Figma file → PageSpec
   valentino image generate --prompt "desc" [--endpoint url] [options]  Generate image (placeholder or external)
-  valentino audit-html <file.html>                                  Audit HTML for CSS violations (inline + <style>)
-  valentino audit-html <file.html> --fix [--no-backup]               Auto-fix + backup original
+  valentino audit-html <file.html> [--allow-token-definitions]                Audit HTML for CSS violations (inline + <style>)
+  valentino audit-html <file.html> --fix [--no-backup]                       Auto-fix + backup original
   valentino validate-tokens <file.css>                              Detect self-referencing/circular CSS tokens
   valentino validate-tokens <file.css> --fix [--no-backup]           Auto-fix self-refs + backup original
   valentino refactor <file> [--dry-run] [--apply] [--no-backup]      Preview + apply refactor with self-ref guard
   valentino certify --security <file.html|file.css>                  Security audit: inline styles, token overrides, event handlers
-  valentino report <file.css|file.html>                              Unified report: audit + tokens + security in one command
-  valentino visual-audit <file.html>                                 Visual audit via Playwright (overflow, collision, contrast)
+  valentino report <file.css|file.html> [--json] [--allow-token-definitions]  Unified report: audit + tokens + security
+  valentino visual-audit <file.html|URL> [--responsive] [--json]             Visual audit via Playwright (overflow, collision, contrast)
   valentino watch <file|directory>                                   Watch for changes and auto-audit
   valentino grid-contract init <file.html> [--selector s] [--out f]  Generate grid layout contract from DOM
   valentino grid-contract verify <file.html> --contract <file.json>  Verify DOM matches grid contract
@@ -188,6 +192,7 @@ Usage:
   valentino review-notes add <session.json> "comment" [--severity]   Add note to session
   valentino review-notes export <session.json> [--out file.md]       Export session to markdown
   valentino review-notes stats <session.json>                        Session statistics
+  valentino mcp                                                      Start MCP server (stdio, 22 tools)
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);

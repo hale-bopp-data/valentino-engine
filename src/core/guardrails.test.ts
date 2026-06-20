@@ -104,6 +104,47 @@ describe('checkNoNamedColor', () => {
   });
 });
 
+describe('allowTokenDefinitions option', () => {
+  it('skips token definition lines for px', () => {
+    const css = ':root {\n  --vr-12: 12px;\n  padding: 12px;\n}';
+    const withOption = checkNoHardcodedPx(css, { allowTokenDefinitions: true });
+    const without = checkNoHardcodedPx(css);
+    expect(without).toHaveLength(2);
+    expect(withOption).toHaveLength(1);
+    expect(withOption[0]).toContain('padding');
+  });
+
+  it('skips token definition lines for colors', () => {
+    const css = '--vc-accent: #0072bc;\ncolor: #0072bc;';
+    const withOption = checkNoHardcodedColor(css, { allowTokenDefinitions: true });
+    const without = checkNoHardcodedColor(css);
+    expect(without).toHaveLength(2);
+    expect(withOption).toHaveLength(1);
+  });
+
+  it('skips token definition lines for named colors', () => {
+    const css = '--vc-warning: red;\ncolor: red;';
+    const withOption = checkNoNamedColor(css, { allowTokenDefinitions: true });
+    const without = checkNoNamedColor(css);
+    expect(without).toHaveLength(2);
+    expect(withOption).toHaveLength(1);
+  });
+
+  it('does not skip non-token lines', () => {
+    const css = 'padding: 16px;\nmargin: 8px;';
+    const result = checkNoHardcodedPx(css, { allowTokenDefinitions: true });
+    expect(result).toHaveLength(2);
+  });
+
+  it('has no effect when option is false or omitted', () => {
+    const css = '--vr-12: 12px;';
+    const withFalse = checkNoHardcodedPx(css, { allowTokenDefinitions: false });
+    const withoutOption = checkNoHardcodedPx(css);
+    expect(withFalse).toHaveLength(1);
+    expect(withoutOption).toHaveLength(1);
+  });
+});
+
 describe('fixNamedColors', () => {
   it('replaces named color with var()', () => {
     const result = fixNamedColors('color: red;');

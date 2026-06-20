@@ -20,6 +20,8 @@ import { probeContrastUsage } from '../core/contrast-usage-probe.js';
 import type { ContrastLevel } from '../core/contrast.js';
 import { figmaToPageSpec, fetchFigmaFile, type FigmaImportOptions } from '../core/figma-import.js';
 import { generateImage, generatePlaceholder, type ImageGenerationRequest, type ImageProviderConfig } from '../core/providers/image.js';
+import { runVisualAudit, runResponsiveAudit } from '../core/visual-audit.js';
+import { generateReport } from '../core/report.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
 
 // ─── Load guardrails.json (SSoT machine-readable) ────────────────────────────
@@ -36,7 +38,7 @@ if (existsSync(guardrailsPath)) {
 
 const server = new McpServer({
   name: 'valentino-engine',
-  version: '2.7.0',
+  version: '2.12.0',
 });
 
 function jsonResult(data: unknown) {
@@ -53,13 +55,17 @@ function parseSpec(spec: string): PageSpecV1 {
 
 server.tool(
   'valentino_audit_css',
-  'Audit a CSS string for hardcoded px values, hex/rgba colors, and named CSS colors.',
-  { css: z.string().describe('CSS content to audit') },
-  async ({ css }) => {
+  'Audit a CSS string for hardcoded px values, hex/rgba colors, and named CSS colors. Use allowTokenDefinitions to skip CSS custom property declarations.',
+  {
+    css: z.string().describe('CSS content to audit'),
+    allowTokenDefinitions: z.boolean().optional().describe('Skip CSS custom property definitions (--var: value) in checks (default: false)'),
+  },
+  async ({ css, allowTokenDefinitions }) => {
+    const opts = allowTokenDefinitions ? { allowTokenDefinitions: true } : undefined;
     const violations = [
-      ...checkNoHardcodedPx(css),
-      ...checkNoHardcodedColor(css),
-      ...checkNoNamedColor(css),
+      ...checkNoHardcodedPx(css, opts),
+      ...checkNoHardcodedColor(css, opts),
+      ...checkNoNamedColor(css, opts),
     ];
     return jsonResult(violations.length === 0
       ? { valid: true, message: 'No guardrail violations found.' }
@@ -72,8 +78,14 @@ server.tool(
 server.tool(
   'valentino_audit_html',
   'Audit an HTML string for CSS violations in <style> tags and inline style attributes. Checks for hardcoded px, hex/rgba colors, and named colors.',
-  { html: z.string().describe('HTML content to audit') },
-  async ({ html }) => jsonResult(auditHtml(html)),
+  {
+    html: z.string().describe('HTML content to audit'),
+    allowTokenDefinitions: z.boolean().optional().describe('Skip CSS custom property definitions (--var: value) in checks (default: false)'),
+  },
+  async ({ html, allowTokenDefinitions }) => {
+    const opts = allowTokenDefinitions ? { allowTokenDefinitions: true } : undefined;
+    return jsonResult(auditHtml(html, opts));
+  },
 );
 
 // ─── Validate Tokens ──────────────────────────────────────────────────────────
@@ -564,12 +576,57 @@ server.tool(
   },
 );
 
+// ─── Visual Audit ─────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_visual_audit',
+  'Run Playwright visual audit on HTML content or a live URL. Detects horizontal overflow, element collisions, and low-contrast text. Supports responsive mode (desktop/tablet/mobile).',
+  {
+    html: z.string().optional().describe('HTML content to audit. Provide this OR url.'),
+    url: z.string().optional().describe('Live URL to audit (e.g., http://127.0.0.1:8765). Provide this OR html.'),
+    responsive: z.boolean().optional().describe('Run at desktop/tablet/mobile viewports (default: false)'),
+    viewportWidth: z.number().optional().describe('Custom viewport width (default: 1440)'),
+    viewportHeight: z.number().optional().describe('Custom viewport height (default: 900)'),
+    contrastThreshold: z.number().optional().describe('WCAG contrast threshold (default: 4.5)'),
+  },
+  async ({ html, url, responsive, viewportWidth, viewportHeight, contrastThreshold }) => {
+    if (!html && !url) {
+      return jsonResult({ error: 'Provide either html (HTML content) or url (live URL to audit).' });
+    }
+    const source = url || html!;
+    const options = { url, viewportWidth, viewportHeight, contrastThreshold };
+
+    if (responsive) {
+      return jsonResult(await runResponsiveAudit(source, options));
+    }
+    return jsonResult(await runVisualAudit(source, options));
+  },
+);
+
+// ─── Unified Report ───────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_report',
+  'Run unified report on a file: CSS guardrails + HTML audit + token validation + security certification. Returns machine-readable JSON with per-section status.',
+  {
+    filePath: z.string().describe('Path to CSS or HTML file to audit'),
+    allowTokenDefinitions: z.boolean().optional().describe('Skip CSS custom property definitions (--var: value) in guardrail checks (default: false)'),
+  },
+  async ({ filePath, allowTokenDefinitions }) => {
+    try {
+      return jsonResult(generateReport(filePath, { allowTokenDefinitions }));
+    } catch (err) {
+      return jsonResult({ error: `Report failed: ${String(err)}` });
+    }
+  },
+);
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('valentino-engine MCP server running on stdio (20 tools)');
+  console.error('valentino-engine MCP server running on stdio (22 tools)');
   process.stdin.resume();
 }
 

@@ -48,6 +48,7 @@ export { validatePageSpec } from './core/page-spec.js';
 
 // Guardrails
 export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors, GUARDRAILS } from './core/guardrails.js';
+export type { GuardrailOptions } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
 
 // HTML Audit — audit <style> tags and inline styles in HTML (#3028)
@@ -235,13 +236,13 @@ export type {
 export { runVisualGuardian, isPlaywrightAvailable } from './core/playwright-adapter.js';
 export type { VisualGuardianReport, VisualViolation, VisualGuardianOptions, RenderHtmlCallback } from './core/playwright-adapter.js';
 
-// Visual Audit — first-class Playwright audit on raw HTML (#3032)
-export { runVisualAudit, formatVisualAudit } from './core/visual-audit.js';
-export type { VisualAuditViolation, VisualAuditResult, VisualAuditOptions } from './core/visual-audit.js';
+// Visual Audit — first-class Playwright audit on raw HTML or URL (#3032)
+export { runVisualAudit, runResponsiveAudit, formatVisualAudit, formatResponsiveAudit, EXIT_CODES } from './core/visual-audit.js';
+export type { VisualAuditViolation, VisualAuditResult, VisualAuditOptions, ResponsiveAuditResult } from './core/visual-audit.js';
 
 // Unified Report — one command for all audits (#3030)
 export { generateReport, formatReport } from './core/report.js';
-export type { ReportSection, UnifiedReport } from './core/report.js';
+export type { ReportSection, UnifiedReport, ReportOptions } from './core/report.js';
 
 // Runtime Token Verification — Playwright getComputedStyle (#3037)
 export { verifyTokensRuntime, formatVerifyRuntime } from './core/verify-tokens-runtime.js';
