@@ -1,15 +1,18 @@
 import { readFileSync } from 'fs';
 import { auditHtml, fixHtml } from '../../core/audit-html.js';
+import type { GuardrailOptions } from '../../core/guardrails.js';
 import { createBackup, computeDiff, formatDiff, writeFixed, parseFixArgs } from '../../core/backup.js';
 
 export function runAuditHtml(args: string[]): void {
     const { fix, noBackup, file } = parseFixArgs(args);
+    const allowTokenDefs = args.includes('--allow-token-definitions');
     if (!file) {
-        console.error('Usage: valentino audit-html <path-to-html-file> [--fix] [--no-backup]');
+        console.error('Usage: valentino audit-html <path-to-html-file> [--fix] [--no-backup] [--allow-token-definitions]');
         process.exit(1);
     }
     const html = readFileSync(file, 'utf-8');
-    const result = auditHtml(html);
+    const opts: GuardrailOptions | undefined = allowTokenDefs ? { allowTokenDefinitions: true } : undefined;
+    const result = auditHtml(html, opts);
     console.log(`Scanned: ${result.styleTagCount} <style> tag(s), ${result.inlineStyleCount} inline style(s)\n`);
     if (result.valid) {
         console.log('✅ No guardrail violations found.');
@@ -42,7 +45,7 @@ export function runAuditHtml(args: string[]): void {
     const hunks = computeDiff(html, fixed);
     console.log(`\n${formatDiff(hunks, file)}`);
 
-    const remaining = auditHtml(fixed);
+    const remaining = auditHtml(fixed, opts);
     if (remaining.valid) {
         console.log('\n✅ All violations fixed.');
     } else {

@@ -13,6 +13,15 @@ export interface VisualAuditResult {
   elementCount: number;
   durationMs: number;
   summary: string;
+  viewport?: { width: number; height: number };
+  phase?: string;
+}
+
+export interface ResponsiveAuditResult {
+  viewports: VisualAuditResult[];
+  passed: boolean;
+  summary: string;
+  durationMs: number;
 }
 
 export interface VisualAuditOptions {
@@ -20,7 +29,22 @@ export interface VisualAuditOptions {
   viewportHeight?: number;
   contrastThreshold?: number;
   settleMs?: number;
+  url?: string;
+  responsive?: boolean;
 }
+
+export const EXIT_CODES = {
+  PASS: 0,
+  VIOLATIONS: 1,
+  TOOL_ERROR: 2,
+  NO_BROWSER: 3,
+} as const;
+
+const RESPONSIVE_VIEWPORTS = [
+  { width: 1440, height: 900, label: 'desktop' },
+  { width: 768, height: 1024, label: 'tablet' },
+  { width: 390, height: 844, label: 'mobile' },
+] as const;
 
 const SKIPPED_RESULT: VisualAuditResult = {
   passed: true,
@@ -30,6 +54,7 @@ const SKIPPED_RESULT: VisualAuditResult = {
   elementCount: 0,
   durationMs: 0,
   summary: 'Visual audit skipped: Playwright not installed. Run `npm install --save-dev playwright` and `npx playwright install chromium` to enable.',
+  phase: 'init',
 };
 
 const AUDIT_SCRIPT = `
@@ -37,14 +62,13 @@ const AUDIT_SCRIPT = `
   const violations = [];
   const warnings = [];
 
-  const sections = document.querySelectorAll('section, [data-section-index], main > *');
+  const sections = document.querySelectorAll('section, [data-section-index], main > *, header, nav, footer, .container, .wrapper, article, aside');
   sections.forEach((el, i) => {
-    const rect = el.getBoundingClientRect();
     if (el.scrollWidth > el.clientWidth + 2) {
       violations.push({
         type: 'overflow',
         severity: 'error',
-        selector: el.tagName.toLowerCase() + (el.id ? '#' + el.id : ''),
+        selector: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(' ')[0] : ''),
         message: 'Horizontal overflow: scrollWidth=' + el.scrollWidth + ' > clientWidth=' + el.clientWidth,
       });
     }
@@ -65,6 +89,15 @@ const AUDIT_SCRIPT = `
         });
       }
     }
+  }
+
+  if (document.documentElement.scrollWidth > window.innerWidth + 2) {
+    violations.push({
+      type: 'overflow',
+      severity: 'error',
+      selector: 'html',
+      message: 'Page-level horizontal overflow: scrollWidth=' + document.documentElement.scrollWidth + ' > viewport=' + window.innerWidth,
+    });
   }
 
   function luminance(r, g, b) {
@@ -104,8 +137,12 @@ const AUDIT_SCRIPT = `
 }
 `;
 
+function isUrl(input: string): boolean {
+  return /^https?:\/\//i.test(input);
+}
+
 export async function runVisualAudit(
-  html: string,
+  htmlOrUrl: string,
   options: VisualAuditOptions = {},
 ): Promise<VisualAuditResult> {
   const t0 = Date.now();
@@ -124,25 +161,74 @@ export async function runVisualAudit(
     viewportHeight = 900,
     contrastThreshold = 4.5,
     settleMs = 1000,
+    url: explicitUrl,
   } = options;
+
+  const targetUrl = explicitUrl || (isUrl(htmlOrUrl) ? htmlOrUrl : undefined);
+  const html = targetUrl ? undefined : htmlOrUrl;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let browser: any = null;
+  let phase = 'browser-launch';
 
   try {
     browser = await pw.chromium.launch({ headless: true });
+    phase = 'page-create';
+
     const page = await browser.newPage({
       viewport: { width: viewportWidth, height: viewportHeight },
     });
 
-    await page.setContent(html, { waitUntil: 'networkidle' });
+    phase = 'content-load';
+    if (targetUrl) {
+      const response = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 30_000 });
+      if (!response || response.status() >= 400) {
+        return {
+          passed: false,
+          available: true,
+          violations: [{
+            type: 'missing-element',
+            severity: 'error',
+            message: `URL returned HTTP ${response?.status() ?? 'no response'}: ${targetUrl}`,
+          }],
+          warnings: [],
+          elementCount: 0,
+          durationMs: Date.now() - t0,
+          summary: `Visual audit failed: URL unreachable or error status`,
+          viewport: { width: viewportWidth, height: viewportHeight },
+          phase,
+        };
+      }
+    } else {
+      await page.setContent(html!, { waitUntil: 'networkidle' });
+    }
+
     if (settleMs > 0) await page.waitForTimeout(settleMs);
 
+    phase = 'audit-script';
     const result = await page.evaluate(AUDIT_SCRIPT, contrastThreshold) as {
       violations: VisualAuditViolation[];
       warnings: VisualAuditViolation[];
       elementCount: number;
     };
+
+    if (!result || !Array.isArray(result.violations)) {
+      return {
+        passed: false,
+        available: true,
+        violations: [{
+          type: 'missing-element',
+          severity: 'error',
+          message: `Audit script returned invalid result in phase "${phase}": expected {violations, warnings, elementCount}`,
+        }],
+        warnings: [],
+        elementCount: 0,
+        durationMs: Date.now() - t0,
+        summary: `Visual audit failed: audit script returned malformed data`,
+        viewport: { width: viewportWidth, height: viewportHeight },
+        phase,
+      };
+    }
 
     const durationMs = Date.now() - t0;
     const passed = result.violations.length === 0;
@@ -157,29 +243,70 @@ export async function runVisualAudit(
       summary: passed
         ? `Visual audit passed in ${durationMs}ms — ${result.elementCount} elements, ${result.warnings.length} warning(s)`
         : `Visual audit FAILED in ${durationMs}ms — ${result.violations.length} error(s), ${result.warnings.length} warning(s)`,
+      viewport: { width: viewportWidth, height: viewportHeight },
+      phase: 'complete',
     };
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     return {
       passed: false,
       available: true,
       violations: [{
         type: 'overflow',
         severity: 'error',
-        message: `Visual audit error: ${err instanceof Error ? err.message : String(err)}`,
+        message: `Visual audit error in phase "${phase}": ${msg}`,
       }],
       warnings: [],
       elementCount: 0,
       durationMs: Date.now() - t0,
-      summary: `Visual audit crashed: ${err instanceof Error ? err.message : String(err)}`,
+      summary: `Visual audit crashed in phase "${phase}": ${msg}`,
+      viewport: { width: viewportWidth, height: viewportHeight },
+      phase,
     };
   } finally {
     await browser?.close();
   }
 }
 
-export function formatVisualAudit(result: VisualAuditResult, filePath: string): string {
+export async function runResponsiveAudit(
+  htmlOrUrl: string,
+  options: Omit<VisualAuditOptions, 'viewportWidth' | 'viewportHeight' | 'responsive'> = {},
+): Promise<ResponsiveAuditResult> {
+  const t0 = Date.now();
+  const viewports: VisualAuditResult[] = [];
+
+  for (const vp of RESPONSIVE_VIEWPORTS) {
+    const result = await runVisualAudit(htmlOrUrl, {
+      ...options,
+      viewportWidth: vp.width,
+      viewportHeight: vp.height,
+    });
+    viewports.push(result);
+  }
+
+  const passed = viewports.every(v => v.passed);
+  const totalViolations = viewports.reduce((s, v) => s + v.violations.length, 0);
+  const totalWarnings = viewports.reduce((s, v) => s + v.warnings.length, 0);
+  const durationMs = Date.now() - t0;
+
+  const lines = RESPONSIVE_VIEWPORTS.map((vp, i) => {
+    const r = viewports[i];
+    const status = !r.available ? 'SKIP' : r.passed ? 'PASS' : 'FAIL';
+    return `  ${vp.label} (${vp.width}x${vp.height}): ${status} — ${r.violations.length} error(s), ${r.warnings.length} warning(s)`;
+  });
+
+  return {
+    viewports,
+    passed,
+    durationMs,
+    summary: `Responsive audit ${passed ? 'PASSED' : 'FAILED'} in ${durationMs}ms — ${totalViolations} error(s), ${totalWarnings} warning(s)\n${lines.join('\n')}`,
+  };
+}
+
+export function formatVisualAudit(result: VisualAuditResult, source: string): string {
   const lines: string[] = [];
-  lines.push(`Visual audit: ${filePath}`);
+  const vpLabel = result.viewport ? ` [${result.viewport.width}x${result.viewport.height}]` : '';
+  lines.push(`Visual audit: ${source}${vpLabel}`);
   lines.push(`  Elements scanned: ${result.elementCount}`);
   lines.push(`  Duration: ${result.durationMs}ms`);
   lines.push('');
@@ -206,5 +333,21 @@ export function formatVisualAudit(result: VisualAuditResult, filePath: string): 
   }
 
   lines.push(result.passed ? 'PASSED' : 'FAILED');
+  return lines.join('\n');
+}
+
+export function formatResponsiveAudit(result: ResponsiveAuditResult, source: string): string {
+  const labels = ['desktop', 'tablet', 'mobile'];
+  const lines: string[] = [];
+  lines.push(`Responsive visual audit: ${source}`);
+  lines.push('='.repeat(60));
+
+  for (let i = 0; i < result.viewports.length; i++) {
+    lines.push('');
+    lines.push(formatVisualAudit(result.viewports[i], `${source} [${labels[i] ?? i}]`));
+  }
+
+  lines.push('\n' + '='.repeat(60));
+  lines.push(result.passed ? 'RESPONSIVE RESULT: PASS' : 'RESPONSIVE RESULT: FAIL');
   return lines.join('\n');
 }
