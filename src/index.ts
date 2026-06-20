@@ -66,6 +66,10 @@ export type { BackupResult, DiffLine, DiffHunk } from './core/backup.js';
 export { previewRefactor, detectNewSelfReferences, countNewTokenReferences, applyFixes, detectFileType, formatProposal } from './core/refactor.js';
 export type { RefactorProposal, SelfRefWarning } from './core/refactor.js';
 
+// Security Certification — UI surface audit (#3039)
+export { certifySecurity, certifySecurityCss, checkInlineStyles, checkEventHandlers, checkTokenOverrides, formatCertification } from './core/certify-security.js';
+export type { SecurityViolation, SecurityCertification } from './core/certify-security.js';
+
 // Validation probes
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';
 export type { ContrastLevel, ContrastResult } from './core/contrast.js';
