@@ -47,16 +47,28 @@ export { normalizePathname, resolvePageIdByRoute } from './core/manifest.js';
 export { validatePageSpec } from './core/page-spec.js';
 
 // Guardrails
-export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, GUARDRAILS } from './core/guardrails.js';
+export { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors, GUARDRAILS } from './core/guardrails.js';
 export { CSS_NAMED_COLORS } from './core/css-named-colors.js';
 
 // HTML Audit — audit <style> tags and inline styles in HTML (#3028)
-export { auditHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
+export { auditHtml, fixHtml, extractStyleTagCss, extractInlineStyles } from './core/audit-html.js';
 export type { HtmlAuditViolation, HtmlAuditResult } from './core/audit-html.js';
 
 // Token Validation — detect circular/self-referencing CSS custom properties (#3029)
-export { validateTokens, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
+export { validateTokens, fixSelfReferences, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
 export type { TokenViolation, ValidateTokensResult } from './core/validate-tokens.js';
+
+// Backup — pre-fix file backup + diff (#3035)
+export { createBackup, restoreBackup, backupExists, computeDiff, formatDiff, writeFixed, parseFixArgs } from './core/backup.js';
+export type { BackupResult, DiffLine, DiffHunk } from './core/backup.js';
+
+// Refactor — dry-run preview + self-ref detection (#3036)
+export { previewRefactor, detectNewSelfReferences, countNewTokenReferences, applyFixes, detectFileType, formatProposal } from './core/refactor.js';
+export type { RefactorProposal, SelfRefWarning } from './core/refactor.js';
+
+// Security Certification — UI surface audit (#3039)
+export { certifySecurity, certifySecurityCss, checkInlineStyles, checkEventHandlers, checkTokenOverrides, formatCertification } from './core/certify-security.js';
+export type { SecurityViolation, SecurityCertification } from './core/certify-security.js';
 
 // Validation probes
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';
@@ -222,3 +234,23 @@ export type {
 // Visual Guardian — Playwright headless DOM audit (PBI-004, optional peer dep)
 export { runVisualGuardian, isPlaywrightAvailable } from './core/playwright-adapter.js';
 export type { VisualGuardianReport, VisualViolation, VisualGuardianOptions, RenderHtmlCallback } from './core/playwright-adapter.js';
+
+// Visual Audit — first-class Playwright audit on raw HTML (#3032)
+export { runVisualAudit, formatVisualAudit } from './core/visual-audit.js';
+export type { VisualAuditViolation, VisualAuditResult, VisualAuditOptions } from './core/visual-audit.js';
+
+// Unified Report — one command for all audits (#3030)
+export { generateReport, formatReport } from './core/report.js';
+export type { ReportSection, UnifiedReport } from './core/report.js';
+
+// Runtime Token Verification — Playwright getComputedStyle (#3037)
+export { verifyTokensRuntime, formatVerifyRuntime } from './core/verify-tokens-runtime.js';
+export type { RuntimeTokenResult, VerifyTokensRuntimeResult } from './core/verify-tokens-runtime.js';
+
+// Watch — live file observer with auto-audit (#3038)
+export { watchFile, auditFileForWatch, formatWatchEvent } from './core/watch.js';
+export type { WatchEvent, WatchOptions } from './core/watch.js';
+
+// Grid Contract — declare and verify DOM grid layout (#3040)
+export { initGridContract, verifyGridContract, formatGridContract, formatGridVerify } from './core/grid-contract.js';
+export type { GridSlot, GridContract, GridVerifyViolation, GridVerifyResult } from './core/grid-contract.js';
