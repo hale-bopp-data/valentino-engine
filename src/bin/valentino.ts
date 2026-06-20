@@ -20,6 +20,7 @@ import { runFigmaImport } from './commands/figma.js';
 import { runImageGenerate } from './commands/image.js';
 import { runAuditHtml } from './commands/audit-html.js';
 import { runValidateTokens } from './commands/validate-tokens.js';
+import { runRefactor } from './commands/refactor.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -104,6 +105,10 @@ switch (command) {
         runValidateTokens(args);
         break;
 
+    case 'refactor':
+        runRefactor(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
     default:
         console.log(`
 🎨 Valentino Engine v2.7.0 — Antifragile Open Source UI Design Engine
@@ -132,6 +137,7 @@ Usage:
   valentino audit-html <file.html> --fix [--no-backup]               Auto-fix + backup original
   valentino validate-tokens <file.css>                              Detect self-referencing/circular CSS tokens
   valentino validate-tokens <file.css> --fix [--no-backup]           Auto-fix self-refs + backup original
+  valentino refactor <file> [--dry-run] [--apply] [--no-backup]      Preview + apply refactor with self-ref guard
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);

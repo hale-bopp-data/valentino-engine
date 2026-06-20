@@ -62,6 +62,10 @@ export type { TokenViolation, ValidateTokensResult } from './core/validate-token
 export { createBackup, restoreBackup, backupExists, computeDiff, formatDiff, writeFixed, parseFixArgs } from './core/backup.js';
 export type { BackupResult, DiffLine, DiffHunk } from './core/backup.js';
 
+// Refactor — dry-run preview + self-ref detection (#3036)
+export { previewRefactor, detectNewSelfReferences, countNewTokenReferences, applyFixes, detectFileType, formatProposal } from './core/refactor.js';
+export type { RefactorProposal, SelfRefWarning } from './core/refactor.js';
+
 // Validation probes
 export { checkWcagContrast, parseColor, relativeLuminance, contrastRatio } from './core/contrast.js';
 export type { ContrastLevel, ContrastResult } from './core/contrast.js';
