@@ -3,7 +3,7 @@
   "name": "Valentino Engine — Open Source UI Design Engine",
   "level": "L3",
   "classification": "product",
-  "version": "2.7.0",
+  "version": "2.12.0",
   "role": "ui_ux_designer",
   "owner": "hale-bopp",
   "description": "Open Source antifragile UI Design Engine. Validates PageSpec JSON, enforces Design Tokens, audits CSS guardrails, checks WCAG accessibility, imports from Figma, and orchestrates image generation via external providers.",
