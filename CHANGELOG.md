@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.14.0] — 2026-06-21
+
+### Added
+- **audit-dom (#3051)**: `valentino audit-dom <url>` — runtime DOM audit via Playwright. Detects inline styles injected by JS, horizontal overflow per viewport, console errors, 404 resources, interactive elements without accessible labels. Multi-viewport with `--responsive`. MCP tool `valentino_audit_dom`. 10 tests.
+- **suggest-fix (#3050)**: `valentino suggest-fix <file>` — non-destructive fix proposals. Covers inline→class, 0px→0, px→token/rem, hardcoded color→token, named color→token. Output formats: `--format patch` (unified diff), `table` (markdown), `json` (structured). MCP tool `valentino_suggest_fix`. 12 tests.
+- **MCP tools update (#3057)**: `profile` (landing|spa|dashboard) on `valentino_probe_rhythm`, `valentino_probe_all`, `valentino_visual_audit`. `debug` on `valentino_visual_audit`. `allowedTokenPrefixes` on `valentino_audit_css`, `valentino_audit_html`, `valentino_report`.
+
+### Changed
+- **MCP**: 22 tools → 24 tools (added `valentino_audit_dom`, `valentino_suggest_fix`).
+- **CLI**: 24 commands → 26 commands (added `audit-dom`, `suggest-fix`).
+- **Pipeline CI (#3058)**: `pr:` and `trigger:` now include `develop` branch (was main-only).
+- **Test suite**: 781 → 803 tests across 52 suites.
+
 ## [2.13.0] — 2026-06-21
 
 ### Added
