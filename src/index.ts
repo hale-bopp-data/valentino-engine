@@ -61,6 +61,9 @@ export type { HtmlAuditViolation, HtmlAuditResult } from './core/audit-html.js';
 export { validateTokens, fixSelfReferences, parseTokenDeclarations, extractVarReferences } from './core/validate-tokens.js';
 export type { TokenViolation, ValidateTokensResult } from './core/validate-tokens.js';
 
+export { createJsonOutput, printJson, SCHEMA_VERSION } from './core/json-output.js';
+export type { JsonOutput, JsonSection } from './core/json-output.js';
+
 // Backup — pre-fix file backup + diff (#3035)
 export { createBackup, restoreBackup, backupExists, computeDiff, formatDiff, writeFixed, parseFixArgs } from './core/backup.js';
 export type { BackupResult, DiffLine, DiffHunk } from './core/backup.js';
