@@ -97,7 +97,7 @@ describe('audit-dom', () => {
 
     it('includes schemaVersion and timestamp', () => {
       const json = auditDomToJson(makeResult());
-      expect(json.schemaVersion).toBe(1);
+      expect(json.schemaVersion).toBe(2);
       expect(json.timestamp).toBeTruthy();
     });
   });

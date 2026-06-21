@@ -103,7 +103,7 @@ describe('suggest-fix', () => {
       const json = suggestFixToJson(result);
       expect(json.tool).toBe('suggest-fix');
       expect(json.sections.length).toBeGreaterThan(0);
-      expect(json.schemaVersion).toBe(1);
+      expect(json.schemaVersion).toBe(2);
     });
 
     it('returns passed=true for clean file', () => {
