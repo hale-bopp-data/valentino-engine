@@ -22,6 +22,9 @@ import { figmaToPageSpec, fetchFigmaFile, type FigmaImportOptions } from '../cor
 import { generateImage, generatePlaceholder, type ImageGenerationRequest, type ImageProviderConfig } from '../core/providers/image.js';
 import { runVisualAudit, runResponsiveAudit } from '../core/visual-audit.js';
 import { generateReport } from '../core/report.js';
+import { runAuditDom, auditDomToJson } from '../core/audit-dom.js';
+import { suggestFixes, suggestFixToJson, formatPatch, formatTable } from '../core/suggest-fix.js';
+import type { AuditProfile } from '../core/spa-profile.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
 
 // ─── Load guardrails.json (SSoT machine-readable) ────────────────────────────
@@ -38,7 +41,7 @@ if (existsSync(guardrailsPath)) {
 
 const server = new McpServer({
   name: 'valentino-engine',
-  version: '2.12.0',
+  version: '2.13.0',
 });
 
 function jsonResult(data: unknown) {
@@ -55,13 +58,14 @@ function parseSpec(spec: string): PageSpecV1 {
 
 server.tool(
   'valentino_audit_css',
-  'Audit a CSS string for hardcoded px values, hex/rgba colors, and named CSS colors. Use allowTokenDefinitions to skip CSS custom property declarations.',
+  'Audit a CSS string for hardcoded px values, hex/rgba colors, and named CSS colors. Use allowTokenDefinitions to skip CSS custom property declarations. Use allowedTokenPrefixes to filter by prefix.',
   {
     css: z.string().describe('CSS content to audit'),
     allowTokenDefinitions: z.boolean().optional().describe('Skip CSS custom property definitions (--var: value) in checks (default: false)'),
+    allowedTokenPrefixes: z.array(z.string()).optional().describe('Only skip token definitions matching these prefixes (e.g., ["--vr-", "--vc-"]). Requires allowTokenDefinitions=true.'),
   },
-  async ({ css, allowTokenDefinitions }) => {
-    const opts = allowTokenDefinitions ? { allowTokenDefinitions: true } : undefined;
+  async ({ css, allowTokenDefinitions, allowedTokenPrefixes }) => {
+    const opts = allowTokenDefinitions ? { allowTokenDefinitions: true, allowedTokenPrefixes } : undefined;
     const violations = [
       ...checkNoHardcodedPx(css, opts),
       ...checkNoHardcodedColor(css, opts),
@@ -81,9 +85,10 @@ server.tool(
   {
     html: z.string().describe('HTML content to audit'),
     allowTokenDefinitions: z.boolean().optional().describe('Skip CSS custom property definitions (--var: value) in checks (default: false)'),
+    allowedTokenPrefixes: z.array(z.string()).optional().describe('Only skip token definitions matching these prefixes (e.g., ["--vr-", "--vc-"]). Requires allowTokenDefinitions=true.'),
   },
-  async ({ html, allowTokenDefinitions }) => {
-    const opts = allowTokenDefinitions ? { allowTokenDefinitions: true } : undefined;
+  async ({ html, allowTokenDefinitions, allowedTokenPrefixes }) => {
+    const opts = allowTokenDefinitions ? { allowTokenDefinitions: true, allowedTokenPrefixes } : undefined;
     return jsonResult(auditHtml(html, opts));
   },
 );
@@ -181,9 +186,12 @@ server.tool(
 
 server.tool(
   'valentino_probe_rhythm',
-  'Validate section sequence rhythm: hero-first, no consecutive same rhythm, spacer rules.',
-  { spec: z.string().describe('PageSpec JSON string') },
-  async ({ spec }) => jsonResult(probeRhythm(parseSpec(spec))),
+  'Validate section sequence rhythm: hero-first, no consecutive same rhythm, spacer rules. Use profile to switch between landing, SPA, and dashboard audit rules.',
+  {
+    spec: z.string().describe('PageSpec JSON string'),
+    profile: z.enum(['landing', 'spa', 'dashboard']).optional().describe('Audit profile: landing (default), spa (relaxed rhythm for app UIs), dashboard'),
+  },
+  async ({ spec, profile }) => jsonResult(probeRhythm(parseSpec(spec), { profile: profile as AuditProfile })),
 );
 
 server.tool(
@@ -207,13 +215,16 @@ server.tool(
 
 server.tool(
   'valentino_probe_all',
-  'Run all validation probes (rhythm + hero + integrity) on a PageSpec.',
-  { spec: z.string().describe('PageSpec JSON string') },
-  async ({ spec }) => {
+  'Run all validation probes (rhythm + hero + integrity) on a PageSpec. Use profile to switch between landing, SPA, and dashboard audit rules.',
+  {
+    spec: z.string().describe('PageSpec JSON string'),
+    profile: z.enum(['landing', 'spa', 'dashboard']).optional().describe('Audit profile: landing (default), spa (relaxed rhythm for app UIs), dashboard'),
+  },
+  async ({ spec, profile }) => {
     const pageSpec = parseSpec(spec);
     const heroes = pageSpec.sections.filter((s): s is HeroSection => s.type === 'hero');
     return jsonResult({
-      rhythm: probeRhythm(pageSpec),
+      rhythm: probeRhythm(pageSpec, { profile: profile as AuditProfile }),
       hero: heroes.map(h => ({ titleKey: h.titleKey, ...probeHeroContract(h) })),
       integrity: probeSectionIntegrity(pageSpec.sections),
     });
@@ -580,7 +591,7 @@ server.tool(
 
 server.tool(
   'valentino_visual_audit',
-  'Run Playwright visual audit on HTML content or a live URL. Detects horizontal overflow, element collisions, and low-contrast text. Supports responsive mode (desktop/tablet/mobile).',
+  'Run Playwright visual audit on HTML content or a live URL. Detects horizontal overflow, element collisions, and low-contrast text. Supports responsive mode and SPA/dashboard profiles.',
   {
     html: z.string().optional().describe('HTML content to audit. Provide this OR url.'),
     url: z.string().optional().describe('Live URL to audit (e.g., http://127.0.0.1:8765). Provide this OR html.'),
@@ -588,13 +599,15 @@ server.tool(
     viewportWidth: z.number().optional().describe('Custom viewport width (default: 1440)'),
     viewportHeight: z.number().optional().describe('Custom viewport height (default: 900)'),
     contrastThreshold: z.number().optional().describe('WCAG contrast threshold (default: 4.5)'),
+    profile: z.enum(['landing', 'spa', 'dashboard']).optional().describe('Audit profile: landing (default), spa (sidebar/panel/tab-aware), dashboard'),
+    debug: z.boolean().optional().describe('Enable debug mode: prints injected script preview, raw result, readyState (default: false)'),
   },
-  async ({ html, url, responsive, viewportWidth, viewportHeight, contrastThreshold }) => {
+  async ({ html, url, responsive, viewportWidth, viewportHeight, contrastThreshold, profile, debug }) => {
     if (!html && !url) {
       return jsonResult({ error: 'Provide either html (HTML content) or url (live URL to audit).' });
     }
     const source = url || html!;
-    const options = { url, viewportWidth, viewportHeight, contrastThreshold };
+    const options = { url, viewportWidth, viewportHeight, contrastThreshold, profile: profile as AuditProfile, debug };
 
     if (responsive) {
       return jsonResult(await runResponsiveAudit(source, options));
@@ -611,13 +624,52 @@ server.tool(
   {
     filePath: z.string().describe('Path to CSS or HTML file to audit'),
     allowTokenDefinitions: z.boolean().optional().describe('Skip CSS custom property definitions (--var: value) in guardrail checks (default: false)'),
+    allowedTokenPrefixes: z.array(z.string()).optional().describe('Only skip token definitions matching these prefixes (e.g., ["--vr-", "--vc-"]). Requires allowTokenDefinitions=true.'),
   },
-  async ({ filePath, allowTokenDefinitions }) => {
+  async ({ filePath, allowTokenDefinitions, allowedTokenPrefixes }) => {
     try {
-      return jsonResult(generateReport(filePath, { allowTokenDefinitions }));
+      return jsonResult(generateReport(filePath, { allowTokenDefinitions, allowedTokenPrefixes }));
     } catch (err) {
       return jsonResult({ error: `Report failed: ${String(err)}` });
     }
+  },
+);
+
+// ─── DOM Audit ────────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_audit_dom',
+  'Audit runtime DOM at a live URL via Playwright. Detects inline styles injected by JS, horizontal overflow, console errors, 404 resources, and interactive elements without accessible labels.',
+  {
+    url: z.string().describe('URL to audit (e.g., http://localhost:3000)'),
+    json: z.boolean().optional().describe('Return structured JSON output (default: false)'),
+  },
+  async ({ url, json }) => {
+    const result = await runAuditDom(url);
+    if (json) return jsonResult(auditDomToJson(result));
+    return jsonResult(result);
+  },
+);
+
+// ─── Suggest Fix ──────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_suggest_fix',
+  'Suggest non-destructive fixes for CSS/HTML violations: inline style→class, 0px→0, px→rem/token, hardcoded color→token. Returns suggestions as patch, table, or JSON.',
+  {
+    content: z.string().describe('File content (CSS or HTML)'),
+    filePath: z.string().describe('File path (used for format detection and output)'),
+    format: z.enum(['patch', 'table', 'json']).optional().describe('Output format: patch (unified diff), table (readable), json (structured). Default: json'),
+  },
+  async ({ content, filePath, format }) => {
+    const result = suggestFixes(content, filePath);
+    if (format === 'patch') {
+      return { content: [{ type: 'text' as const, text: formatPatch(result) }] };
+    }
+    if (format === 'table') {
+      return { content: [{ type: 'text' as const, text: formatTable(result) }] };
+    }
+    return jsonResult(suggestFixToJson(result));
   },
 );
 
@@ -626,7 +678,7 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('valentino-engine MCP server running on stdio (22 tools)');
+  console.error('valentino-engine MCP server running on stdio (24 tools)');
   process.stdin.resume();
 }
 

@@ -259,6 +259,14 @@ export type { RuntimeTokenResult, VerifyTokensRuntimeResult } from './core/verif
 export { watchFile, auditFileForWatch, formatWatchEvent } from './core/watch.js';
 export type { WatchEvent, WatchOptions } from './core/watch.js';
 
+// DOM Audit — runtime Playwright audit: inline styles, overflow, console, 404, a11y (#3051)
+export { runAuditDom, runMultiViewportAuditDom, formatAuditDom, auditDomToJson } from './core/audit-dom.js';
+export type { DomViolation, AuditDomResult, AuditDomOptions } from './core/audit-dom.js';
+
+// Suggest Fix — non-destructive fix proposals: inline→class, px→rem, color→token (#3050)
+export { suggestFixes, formatPatch, formatTable, suggestFixToJson } from './core/suggest-fix.js';
+export type { Suggestion, SuggestFixResult } from './core/suggest-fix.js';
+
 // Grid Contract — declare and verify DOM grid layout (#3040)
 export { initGridContract, verifyGridContract, formatGridContract, formatGridVerify } from './core/grid-contract.js';
 export type { GridSlot, GridContract, GridVerifyViolation, GridVerifyResult } from './core/grid-contract.js';
