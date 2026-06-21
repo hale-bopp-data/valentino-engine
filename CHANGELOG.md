@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **MCP server version drift (#3057)**: the MCP server reported a hardcoded `2.13.0` while `package.json` was `2.14.0`. The server version is now derived dynamically from `package.json` (`src/mcp/version.ts`), eliminating the drift permanently, with a regression test. The #3057 MCP parameters (`profile`/`debug`/`allowedTokenPrefixes`) shipped in 2.14.0; this completes #3057 by fixing version reporting.
+
 ## [2.14.0] — 2026-06-21
 
 ### Added
