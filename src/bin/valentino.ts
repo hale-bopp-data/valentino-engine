@@ -32,6 +32,8 @@ import { runWatch } from './commands/watch.js';
 import { runGridContract } from './commands/grid-contract.js';
 import { runTemplateAudit } from './commands/template-audit.js';
 import { runReviewNotes } from './commands/review-notes.js';
+import { runAuditDomCmd } from './commands/audit-dom.js';
+import { runSuggestFix } from './commands/suggest-fix.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -148,6 +150,14 @@ switch (command) {
         runReviewNotes(args);
         break;
 
+    case 'audit-dom':
+        runAuditDomCmd(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
+    case 'suggest-fix':
+        runSuggestFix(args);
+        break;
+
     case 'mcp':
         import('../mcp/index.js').catch(e => { console.error('MCP server failed:', e); process.exit(1); });
         break;
@@ -192,7 +202,9 @@ Usage:
   valentino review-notes add <session.json> "comment" [--severity]   Add note to session
   valentino review-notes export <session.json> [--out file.md]       Export session to markdown
   valentino review-notes stats <session.json>                        Session statistics
-  valentino mcp                                                      Start MCP server (stdio, 22 tools)
+  valentino audit-dom <url> [--json] [--responsive]                  Runtime DOM audit via Playwright (inline styles, overflow, 404, a11y)
+  valentino suggest-fix <file> [--format patch|table|json] [--json]  Suggest fixes without modifying (inline→class, px→rem, color→token)
+  valentino mcp                                                      Start MCP server (stdio, 24 tools)
 
 GitHub: https://github.com/hale-bopp-data/valentino-engine
 `);
