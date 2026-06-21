@@ -35,7 +35,7 @@ export async function runVisualAuditCmd(args: string[]): Promise<void> {
     const auditOpts = { profile, debug, waitForSelector, navTimeoutMs, settleMs, screenshot, screenshotDir };
 
     if (!source) {
-        console.error('Usage: valentino visual-audit <file.html|URL> [--responsive] [--json] [--debug] [--profile auto|landing|spa|dashboard] [--wait-for <selector>] [--timeout <ms>] [--settle <ms>] [--screenshot-dir <dir>] [--no-screenshot]');
+        console.error('Usage: valentino visual-audit <file.html|URL> [--responsive] [--json] [--debug] [--profile auto|landing|spa|dashboard|chat|data-table|form] [--wait-for <selector>] [--timeout <ms>] [--settle <ms>] [--screenshot-dir <dir>] [--no-screenshot]');
         process.exit(EXIT_CODES.TOOL_ERROR);
     }
 
