@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runVisualAudit, formatVisualAudit, runResponsiveAudit, formatResponsiveAudit, EXIT_CODES } from './visual-audit.js';
+import { runVisualAudit, formatVisualAudit, runResponsiveAudit, formatResponsiveAudit, EXIT_CODES, buildInvocableScript } from './visual-audit.js';
 
 describe('runVisualAudit', () => {
   it('returns result with available flag', async () => {
@@ -161,5 +161,48 @@ describe('formatVisualAudit — viewport label', () => {
     };
     const output = formatVisualAudit(result, 'page.html');
     expect(output).toContain('[390x844]');
+  });
+});
+
+describe('buildInvocableScript (deterministic IIFE invocation)', () => {
+  it('wraps an arrow-function string as an invocable IIFE with the threshold arg', () => {
+    const script = `(t) => ({ violations: [], warnings: [], elementCount: t })`;
+    const wrapped = buildInvocableScript(script, 4.5);
+    expect(wrapped).toBe('((t) => ({ violations: [], warnings: [], elementCount: t }))(4.5)');
+  });
+
+  it('when evaluated, RETURNS the function result — never the function object (no undefined)', () => {
+    const script = `(threshold) => ({ violations: [], warnings: [], elementCount: threshold })`;
+    const wrapped = buildInvocableScript(script, 7);
+    // eslint-disable-next-line no-eval
+    const out = eval(wrapped) as { violations: unknown[]; warnings: unknown[]; elementCount: number };
+    expect(out).not.toBeUndefined();
+    expect(typeof out).toBe('object');
+    expect(out.elementCount).toBe(7);
+    expect(Array.isArray(out.violations)).toBe(true);
+    expect(Array.isArray(out.warnings)).toBe(true);
+  });
+
+  it('trims surrounding whitespace from the audit script', () => {
+    expect(buildInvocableScript('\n  (t) => t \n', 1)).toBe('((t) => t)(1)');
+  });
+});
+
+describe('runVisualAudit — normalized result contract (never undefined)', () => {
+  it('always resolves to a well-formed result for any input/profile', async () => {
+    const inputs = [
+      '<html><body><main>x</main></body></html>',
+      '',
+      'http://127.0.0.1:1/__unreachable__',
+    ];
+    for (const input of inputs) {
+      const r = await runVisualAudit(input, { profile: 'dashboard' });
+      expect(r).toBeDefined();
+      expect(typeof r.passed).toBe('boolean');
+      expect(Array.isArray(r.violations)).toBe(true);
+      expect(Array.isArray(r.warnings)).toBe(true);
+      expect(typeof r.elementCount).toBe('number');
+      expect(typeof r.summary).toBe('string');
+    }
   });
 });
