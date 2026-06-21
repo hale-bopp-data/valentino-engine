@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.13.0] — 2026-06-21
+
+### Added
+- **SPA/Dashboard Profile (#3049)**: `--profile spa|dashboard|landing` on `probe` and `visual-audit`. SPA profile relaxes rhythm rules, adds sidebar-ratio, form-label coverage, tab a11y, nav-landmark checks. New `src/core/spa-profile.ts` (21 tests).
+- **Config Token Definitions (#3052)**: `.valentino.json` config with `allowedTokenPrefixes` and `tokenDefinitionSelectors`. Prefix-based filtering — only authorized token prefixes are exempted. Auto-discovery walks up 10 directories. New `src/core/guardrail-config.ts` (22 tests).
+- **Uniform JSON Output (#3053)**: `--json` flag on all 6 commands (`audit`, `audit-html`, `certify`, `validate-tokens`, `probe`, `report`). Schema v1 with `tool`, `version`, `schemaVersion`, `timestamp`, `passed`, `exitCode`, `sections`, `summary`. New `src/core/json-output.ts` (7 tests).
+- **Visual-Audit Diagnostics (#3048)**: console capture (`page.on('console')`, `page.on('pageerror')`), `--debug` mode (script preview, raw result), actionable error messages with typeof/preview/readyState, partial fallback on script failure (6 tests).
+- **57 new tests**: guardrail-config (22), spa-profile (21), report (7), json-output (7). Total: 781.
+
+### Fixed
+- **Report `--allow-token-definitions` (#3047)**: flag now propagated to HTML Audit section in `generateReport()`. Was only reaching CSS Guardrails (7 tests).
+
+### Changed
+- **Exit codes**: unified across all commands — 0=pass, 1=violations, 2=tool error, 3=dependency missing.
+- **`VisualAuditResult`**: added `consoleMessages`, `pageErrors`, `pageTitle`, `diagnostics` fields.
+- **Test suite**: 724 → 781 tests across 50 suites.
+
 ## [2.12.0] — 2026-06-20
 
 ### Added
