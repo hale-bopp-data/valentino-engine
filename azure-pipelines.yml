@@ -6,6 +6,7 @@ trigger:
   branches:
     include:
       - main
+      - develop
   paths:
     exclude:
       - '*.md'
@@ -15,6 +16,7 @@ pr:
   branches:
     include:
       - main
+      - develop
 
 pool:
   name: 'Default'
