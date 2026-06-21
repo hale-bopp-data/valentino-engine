@@ -2,8 +2,8 @@
 
 ## [Unreleased]
 
-### Added
-- **Layout contracts (#3083)**: nuovo comando `valentino layout-contract <init|verify>` (mirror di grid-contract #3040) su regioni semantiche header/sidebar/main/footer. `init` genera il contratto da una pagina (file o URL); `verify` controlla via Playwright: sidebar non sovrappone main, header/footer non coprono main, main contenuto entro il viewport (orizzontale), coerenza z-order dichiarato. Violazioni con `region`/`selector` nel report JSON stabile (`--json`). Logica di analisi pura (`analyzeLayout`) Node-testabile. Parte del Visual QA Guardrail (#3080).
+### Fixed
+- **MCP server version drift (#3057)**: the MCP server reported a hardcoded `2.13.0` while `package.json` was `2.14.0`. The server version is now derived dynamically from `package.json` (`src/mcp/version.ts`), eliminating the drift permanently, with a regression test. The #3057 MCP parameters (`profile`/`debug`/`allowedTokenPrefixes`) shipped in 2.14.0; this completes #3057 by fixing version reporting.
 
 ## [2.14.0] — 2026-06-21
 
