@@ -27,6 +27,7 @@ export interface UnifiedReport {
 
 export interface ReportOptions {
   allowTokenDefinitions?: boolean;
+  allowedTokenPrefixes?: string[];
 }
 
 function detectType(filePath: string): 'css' | 'html' {
@@ -49,8 +50,8 @@ function auditCssSection(css: string, guardrailOpts?: GuardrailOptions): ReportS
   };
 }
 
-function auditHtmlSection(html: string): ReportSection {
-  const result: HtmlAuditResult = auditHtml(html);
+function auditHtmlSection(html: string, options?: GuardrailOptions): ReportSection {
+  const result: HtmlAuditResult = auditHtml(html, options);
   return {
     name: 'HTML Audit',
     status: result.valid ? 'pass' : 'fail',
@@ -103,11 +104,11 @@ export function generateReport(filePath: string, options?: ReportOptions): Unifi
   const fileType = detectType(filePath);
   const sections: ReportSection[] = [];
   const guardrailOpts: GuardrailOptions | undefined = options?.allowTokenDefinitions
-    ? { allowTokenDefinitions: true }
+    ? { allowTokenDefinitions: true, allowedTokenPrefixes: options.allowedTokenPrefixes }
     : undefined;
 
   if (fileType === 'html') {
-    sections.push(auditHtmlSection(content));
+    sections.push(auditHtmlSection(content, guardrailOpts));
     const css = extractCss(content);
     if (css.trim()) {
       sections.push(auditCssSection(css, guardrailOpts));

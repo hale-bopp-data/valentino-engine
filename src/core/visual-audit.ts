@@ -1,3 +1,6 @@
+import type { AuditProfile } from './spa-profile.js';
+import { buildSpaAuditScript } from './spa-profile.js';
+
 export interface VisualAuditViolation {
   type: 'overflow' | 'collision' | 'contrast' | 'missing-element';
   severity: 'error' | 'warning';
@@ -15,6 +18,12 @@ export interface VisualAuditResult {
   summary: string;
   viewport?: { width: number; height: number };
   phase?: string;
+  profile?: AuditProfile;
+  meta?: Record<string, unknown>;
+  consoleMessages?: string[];
+  pageErrors?: string[];
+  pageTitle?: string;
+  diagnostics?: string;
 }
 
 export interface ResponsiveAuditResult {
@@ -31,6 +40,8 @@ export interface VisualAuditOptions {
   settleMs?: number;
   url?: string;
   responsive?: boolean;
+  profile?: AuditProfile;
+  debug?: boolean;
 }
 
 export const EXIT_CODES = {
@@ -162,14 +173,22 @@ export async function runVisualAudit(
     contrastThreshold = 4.5,
     settleMs = 1000,
     url: explicitUrl,
+    profile = 'landing',
+    debug = false,
   } = options;
+
+  const auditScript = profile === 'landing' ? AUDIT_SCRIPT : buildSpaAuditScript(profile);
 
   const targetUrl = explicitUrl || (isUrl(htmlOrUrl) ? htmlOrUrl : undefined);
   const html = targetUrl ? undefined : htmlOrUrl;
 
+  const consoleMessages: string[] = [];
+  const pageErrors: string[] = [];
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let browser: any = null;
   let phase = 'browser-launch';
+  let pageTitle = '';
 
   try {
     browser = await pw.chromium.launch({ headless: true });
@@ -179,10 +198,22 @@ export async function runVisualAudit(
       viewport: { width: viewportWidth, height: viewportHeight },
     });
 
+    page.on('console', (msg: { type: () => string; text: () => string }) => {
+      const type = msg.type();
+      if (type === 'error' || type === 'warning') {
+        consoleMessages.push(`[${type}] ${msg.text()}`);
+      }
+    });
+
+    page.on('pageerror', (err: { message: string }) => {
+      pageErrors.push(err.message);
+    });
+
     phase = 'content-load';
     if (targetUrl) {
       const response = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 30_000 });
       if (!response || response.status() >= 400) {
+        pageTitle = await page.title().catch(() => '');
         return {
           passed: false,
           available: true,
@@ -197,6 +228,9 @@ export async function runVisualAudit(
           summary: `Visual audit failed: URL unreachable or error status`,
           viewport: { width: viewportWidth, height: viewportHeight },
           phase,
+          consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
+          pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
+          pageTitle: pageTitle || undefined,
         };
       }
     } else {
@@ -204,29 +238,100 @@ export async function runVisualAudit(
     }
 
     if (settleMs > 0) await page.waitForTimeout(settleMs);
+    pageTitle = await page.title().catch(() => '');
 
     phase = 'audit-script';
-    const result = await page.evaluate(AUDIT_SCRIPT, contrastThreshold) as {
-      violations: VisualAuditViolation[];
-      warnings: VisualAuditViolation[];
-      elementCount: number;
-    };
 
-    if (!result || !Array.isArray(result.violations)) {
+    if (debug) {
+      const scriptPreview = auditScript.substring(0, 500);
+      consoleMessages.push(`[debug] Audit script (first 500 chars): ${scriptPreview}`);
+      consoleMessages.push(`[debug] Profile: ${profile}, Contrast threshold: ${contrastThreshold}`);
+      const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
+      consoleMessages.push(`[debug] document.readyState: ${readyState}`);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let rawResult: any;
+    try {
+      rawResult = await page.evaluate(auditScript, contrastThreshold);
+    } catch (evalErr) {
+      const evalMsg = evalErr instanceof Error ? evalErr.message : String(evalErr);
+      const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
+      const docUrl = await page.evaluate('document.URL').catch(() => 'unknown');
+      const diagnostics = [
+        `Audit script threw in phase "${phase}"`,
+        `Error: ${evalMsg}`,
+        `document.readyState: ${readyState}`,
+        `document.URL: ${docUrl}`,
+        `Page title: ${pageTitle}`,
+        consoleMessages.length > 0 ? `Console (${consoleMessages.length}): ${consoleMessages.slice(0, 5).join(' | ')}` : 'Console: empty',
+        pageErrors.length > 0 ? `Page errors (${pageErrors.length}): ${pageErrors.slice(0, 3).join(' | ')}` : 'Page errors: none',
+      ].join('\n');
+
       return {
         passed: false,
         available: true,
         violations: [{
           type: 'missing-element',
           severity: 'error',
-          message: `Audit script returned invalid result in phase "${phase}": expected {violations, warnings, elementCount}`,
+          message: `Audit script error: ${evalMsg}`,
         }],
         warnings: [],
         elementCount: 0,
         durationMs: Date.now() - t0,
-        summary: `Visual audit failed: audit script returned malformed data`,
+        summary: `Visual audit failed: audit script threw an error`,
         viewport: { width: viewportWidth, height: viewportHeight },
         phase,
+        consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
+        pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
+        pageTitle: pageTitle || undefined,
+        diagnostics,
+      };
+    }
+
+    if (debug) {
+      const rawPreview = JSON.stringify(rawResult)?.substring(0, 500) ?? 'undefined';
+      consoleMessages.push(`[debug] Raw result type: ${typeof rawResult}, preview: ${rawPreview}`);
+    }
+
+    const result = rawResult as {
+      violations: VisualAuditViolation[];
+      warnings: VisualAuditViolation[];
+      elementCount: number;
+      meta?: Record<string, unknown>;
+    };
+
+    if (!result || !Array.isArray(result.violations)) {
+      const rawType = result === null ? 'null' : typeof result;
+      const rawPreview = JSON.stringify(result)?.substring(0, 200) ?? 'undefined';
+      const diagnostics = [
+        `Audit script returned malformed data in phase "${phase}"`,
+        `Expected: {violations: [], warnings: [], elementCount: number}`,
+        `Received type: ${rawType}`,
+        `Received preview: ${rawPreview}`,
+        `Page title: ${pageTitle}`,
+        consoleMessages.length > 0 ? `Console (${consoleMessages.length}): ${consoleMessages.slice(0, 5).join(' | ')}` : 'Console: empty',
+        pageErrors.length > 0 ? `Page errors (${pageErrors.length}): ${pageErrors.slice(0, 3).join(' | ')}` : 'Page errors: none',
+      ].join('\n');
+
+      return {
+        passed: false,
+        available: true,
+        violations: [{
+          type: 'missing-element',
+          severity: 'error',
+          message: `Audit script returned ${rawType} instead of {violations, warnings, elementCount}. ${pageErrors.length > 0 ? 'Page errors: ' + pageErrors[0] : 'No page errors.'}`,
+        }],
+        warnings: [],
+        elementCount: 0,
+        durationMs: Date.now() - t0,
+        summary: `Visual audit failed: audit script returned malformed data (${rawType})`,
+        viewport: { width: viewportWidth, height: viewportHeight },
+        phase,
+        consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
+        pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
+        pageTitle: pageTitle || undefined,
+        diagnostics,
       };
     }
 
@@ -245,9 +350,22 @@ export async function runVisualAudit(
         : `Visual audit FAILED in ${durationMs}ms — ${result.violations.length} error(s), ${result.warnings.length} warning(s)`,
       viewport: { width: viewportWidth, height: viewportHeight },
       phase: 'complete',
+      profile,
+      meta: result.meta,
+      consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
+      pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
+      pageTitle: pageTitle || undefined,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    const diagnostics = [
+      `Visual audit crashed in phase "${phase}"`,
+      `Error: ${msg}`,
+      `Page title: ${pageTitle || 'N/A'}`,
+      consoleMessages.length > 0 ? `Console (${consoleMessages.length}): ${consoleMessages.slice(0, 5).join(' | ')}` : 'Console: empty',
+      pageErrors.length > 0 ? `Page errors (${pageErrors.length}): ${pageErrors.slice(0, 3).join(' | ')}` : 'Page errors: none',
+    ].join('\n');
+
     return {
       passed: false,
       available: true,
@@ -262,6 +380,10 @@ export async function runVisualAudit(
       summary: `Visual audit crashed in phase "${phase}": ${msg}`,
       viewport: { width: viewportWidth, height: viewportHeight },
       phase,
+      consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
+      pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
+      pageTitle: pageTitle || undefined,
+      diagnostics,
     };
   } finally {
     await browser?.close();
@@ -309,6 +431,7 @@ export function formatVisualAudit(result: VisualAuditResult, source: string): st
   lines.push(`Visual audit: ${source}${vpLabel}`);
   lines.push(`  Elements scanned: ${result.elementCount}`);
   lines.push(`  Duration: ${result.durationMs}ms`);
+  if (result.pageTitle) lines.push(`  Page title: ${result.pageTitle}`);
   lines.push('');
 
   if (!result.available) {
@@ -328,6 +451,30 @@ export function formatVisualAudit(result: VisualAuditResult, source: string): st
     lines.push(`WARNINGS (${result.warnings.length}):`);
     for (const w of result.warnings) {
       lines.push(`  [${w.type}] ${w.message}${w.selector ? ` (${w.selector})` : ''}`);
+    }
+    lines.push('');
+  }
+
+  if (result.pageErrors && result.pageErrors.length > 0) {
+    lines.push(`PAGE ERRORS (${result.pageErrors.length}):`);
+    for (const e of result.pageErrors.slice(0, 10)) {
+      lines.push(`  ${e}`);
+    }
+    lines.push('');
+  }
+
+  if (result.consoleMessages && result.consoleMessages.length > 0) {
+    lines.push(`CONSOLE (${result.consoleMessages.length}):`);
+    for (const m of result.consoleMessages.slice(0, 20)) {
+      lines.push(`  ${m}`);
+    }
+    lines.push('');
+  }
+
+  if (result.diagnostics) {
+    lines.push('DIAGNOSTICS:');
+    for (const d of result.diagnostics.split('\n')) {
+      lines.push(`  ${d}`);
     }
     lines.push('');
   }

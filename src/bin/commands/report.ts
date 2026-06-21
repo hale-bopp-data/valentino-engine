@@ -1,4 +1,7 @@
+import { dirname } from 'path';
 import { generateReport, formatReport } from '../../core/report.js';
+import { loadTokenConfig } from '../../core/guardrail-config.js';
+import { createJsonOutput, printJson } from '../../core/json-output.js';
 
 export function runReport(args: string[]): void {
     const file = args.find(a => !a.startsWith('-'));
@@ -11,12 +14,28 @@ export function runReport(args: string[]): void {
     }
 
     try {
+        const config = allowTokenDefs ? loadTokenConfig(dirname(file)) : undefined;
         const report = generateReport(file, {
             allowTokenDefinitions: allowTokenDefs,
+            allowedTokenPrefixes: config?.allowedTokenPrefixes,
         });
 
         if (json) {
-            console.log(JSON.stringify(report, null, 2));
+            printJson(createJsonOutput({
+                tool: 'report',
+                file,
+                passed: report.passed,
+                exitCode: report.passed ? 0 : 1,
+                sections: report.sections.map(s => ({
+                    name: s.name,
+                    status: s.status,
+                    violations: s.details.slice(0, s.violations),
+                    warnings: s.details.slice(s.violations),
+                })),
+                summary: report.passed
+                    ? 'All sections passed'
+                    : `${report.totalViolations} violation(s), ${report.totalWarnings} warning(s)`,
+            }));
         } else {
             console.log(formatReport(report));
         }

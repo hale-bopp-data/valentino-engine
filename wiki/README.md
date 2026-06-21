@@ -1,49 +1,64 @@
 ---
-title: "<REPO-NAME> — Wiki Figlia"
-status: TODO  # active | draft | deprecated
-created: "YYYY-MM-DD"
-owner: TODO   # team o agent owner
-lifecycle: TODO  # experimental | stable | maintenance | sunset
-inherits_from: easyway/wiki/  # mamma SSoT cross-agent (read-only reference)
-doctrine: wiki-sovereignty v1.0.0  # [[wiki-sovereignty]] in mamma
+title: "valentino-engine -- Wiki Figlia"
+status: active
+created: "2026-06-20"
+owner: agent_valentino
+lifecycle: stable
+inherits_from: easyway/wiki/
+doctrine: wiki-sovereignty v1.0.0
 ---
 
-# <REPO-NAME> — Wiki Figlia
+# valentino-engine -- Wiki Figlia
 
-> **Sovrana**: questa wiki vive di vita propria. Chi clona <REPO-NAME> ha tutto qui. La mamma `easyway/wiki/` è una *referenza*, non una *dipendenza*. Vedi [[wiki-sovereignty]] (manifesto).
+> **Sovrana**: questa wiki vive di vita propria. Chi clona valentino-engine ha tutto qui.
 
 ## A cosa serve
 
-<!-- TODO: 1-2 frasi. Cosa fa questo repo, perché esiste. NON copiare README.md del codice — qui ragioniamo a livello documentale/cognitivo. -->
+Valentino Engine e' un **audit tool per CSS/HTML e un design engine** che impone l'uso di design token, verifica accessibilita' WCAG, e valida la struttura delle pagine. Funziona come CLI (24 comandi), MCP server (22 tool per agenti AI), e libreria TypeScript. Non ha dipendenze da framework (no React, no Tailwind).
 
 ## Owner & lifecycle
 
-- **Owner**: <!-- TODO: team o agent (es. agent_scrummaster, founder, team_devops) -->
-- **Lifecycle**: <!-- TODO: experimental / stable / maintenance / sunset -->
-- **Decommissioning trigger**: <!-- TODO opzionale: cosa lo rende obsoleto? -->
+- **Owner**: hale-bopp (open source, MIT)
+- **Lifecycle**: stable (v2.12.0, 724 test, npm published)
+- **Decommissioning trigger**: se EasyWay abbandona il sistema di design token, Valentino perde il suo scopo
 
 ## Upstream / downstream
 
-- **Upstream** (chi consuma questo repo): <!-- TODO: lista repo o sistemi -->
-- **Downstream** (chi questo repo consuma): <!-- TODO: lista repo, MCP, servizi -->
+### Upstream (chi consuma questo repo)
+
+| Consumer | Come | Cosa usa |
+|----------|------|----------|
+| easyway-portal | npm dependency, API | PageSpec rendering, design token enforcement, catalog resolution |
+| sn-desk | npm dependency, CLI | CSS/HTML audit, visual audit su portale live |
+| AI agents | MCP server (22 tools) | Automated CSS review, visual regression checks, WCAG contrast |
+| CI pipelines | CLI + exit codes | Guardrail gate prima di merge (exit 0=pass, 1=fail) |
+| easyway-ado MCP | Indirect (agents invoke valentino MCP) | Branch strategy, PR gate |
+
+### Downstream (chi questo repo consuma)
+
+| Dependency | Tipo | Scopo |
+|------------|------|-------|
+| @modelcontextprotocol/sdk | npm | MCP server stdio transport |
+| zod | npm | Input validation per MCP tools |
+| playwright | peer (optional) | Visual audit, Visual Guardian, runtime token verify |
 
 ## Indice wiki figlia
 
-- [Runbook](runbook.md) — come build/test/deploy localmente
-- [Contracts](contracts.md) — API/CLI/config esposti + breaking-change policy
-- [Lessons](lessons.md) — lessons specifiche di questo repo
-- [Doctrine inherited](doctrine-inherited.md) — snapshot doctrine mamma usate qui
+- [Runbook](runbook.md) -- come build/test/deploy localmente
+- [Contracts](contracts.md) -- API/CLI/config esposti + breaking-change policy
+- [Lessons](lessons.md) -- lessons specifiche di questo repo (3 lessons da S438)
+- [Doctrine inherited](doctrine-inherited.md) -- snapshot doctrine mamma usate qui
+- [Component guide](guides/component-valentino.md) -- guida componente
 
 ## Doctrine governance
 
-Questa wiki applica [[wiki-sovereignty]] (mamma `easyway/wiki/guides/governance/wiki-sovereignty.md`):
+Questa wiki applica wiki-sovereignty:
 
 - **Cosa universale** vive in mamma (G-rules, manifesti cross-agent, handoff).
 - **Come locale** vive qui (runbook, contracts, lessons di questo repo).
-- Lesson che diventa universale (≥3 repo): promotion via handoff `promote-to-mother` in `_handoffs/landing/`. Vedi [[wiki-sovereignty]] § Promotion bottom-up.
 
 ## Status & versioning
 
-- Version: <!-- TODO semver opzionale -->
-- Last review: <!-- TODO data ultima revisione wiki -->
-- Test sovranità: <!-- TODO data + esito Test 1-3 di wiki-sovereignty § Test scenari -->
+- Version: 2.12.0
+- Last review: 2026-06-20 (S438)
+- npm: [@hale-bopp/valentino-engine](https://www.npmjs.com/package/@hale-bopp/valentino-engine)

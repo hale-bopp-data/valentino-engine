@@ -1,5 +1,46 @@
 # Changelog
 
+## [2.13.0] — 2026-06-21
+
+### Added
+- **SPA/Dashboard Profile (#3049)**: `--profile spa|dashboard|landing` on `probe` and `visual-audit`. SPA profile relaxes rhythm rules, adds sidebar-ratio, form-label coverage, tab a11y, nav-landmark checks. New `src/core/spa-profile.ts` (21 tests).
+- **Config Token Definitions (#3052)**: `.valentino.json` config with `allowedTokenPrefixes` and `tokenDefinitionSelectors`. Prefix-based filtering — only authorized token prefixes are exempted. Auto-discovery walks up 10 directories. New `src/core/guardrail-config.ts` (22 tests).
+- **Uniform JSON Output (#3053)**: `--json` flag on all 6 commands (`audit`, `audit-html`, `certify`, `validate-tokens`, `probe`, `report`). Schema v1 with `tool`, `version`, `schemaVersion`, `timestamp`, `passed`, `exitCode`, `sections`, `summary`. New `src/core/json-output.ts` (7 tests).
+- **Visual-Audit Diagnostics (#3048)**: console capture (`page.on('console')`, `page.on('pageerror')`), `--debug` mode (script preview, raw result), actionable error messages with typeof/preview/readyState, partial fallback on script failure (6 tests).
+- **57 new tests**: guardrail-config (22), spa-profile (21), report (7), json-output (7). Total: 781.
+
+### Fixed
+- **Report `--allow-token-definitions` (#3047)**: flag now propagated to HTML Audit section in `generateReport()`. Was only reaching CSS Guardrails (7 tests).
+
+### Changed
+- **Exit codes**: unified across all commands — 0=pass, 1=violations, 2=tool error, 3=dependency missing.
+- **`VisualAuditResult`**: added `consoleMessages`, `pageErrors`, `pageTitle`, `diagnostics` fields.
+- **Test suite**: 724 → 781 tests across 50 suites.
+
+## [2.12.0] — 2026-06-20
+
+### Added
+- **MCP Visual Audit (#3046)**: `valentino_visual_audit` — Playwright audit on HTML content or live URLs. Detects overflow, collisions, contrast. Supports `responsive` mode (desktop/tablet/mobile).
+- **MCP Report (#3046)**: `valentino_report` — unified report (CSS guardrails + tokens + security) as MCP tool. JSON output.
+- **URL Visual Audit (#3046)**: `valentino visual-audit http://localhost:8765` — accepts URLs directly, auto-detected by `http(s)://` prefix.
+- **Responsive Audit (#3046)**: `--responsive` flag runs visual audit at 3 viewports: desktop (1440x900), tablet (768x1024), mobile (390x844).
+- **`--allow-token-definitions` (#3046)**: skip CSS custom property declarations (`--var: value`) in guardrail checks. Available on `audit`, `audit-html`, `report` CLI commands and `valentino_audit_css`, `valentino_audit_html` MCP tools.
+- **JSON Output (#3046)**: `--json` flag on `report` and `visual-audit` for machine-readable output.
+- **Exit Codes (#3046)**: 0=pass, 1=violations, 2=tool error, 3=browser unavailable.
+- **CLI `valentino mcp`**: start MCP server from CLI (22 tools, stdio).
+- **Page-level overflow detection**: audit script checks `document.documentElement.scrollWidth > window.innerWidth`.
+- **Phase-based error diagnostics**: visual audit errors include `phase` field (browser-launch, page-create, content-load, audit-script).
+- **11 new tests**: `GuardrailOptions`, responsive audit, EXIT_CODES, viewport labels, report `allowTokenDefinitions`. Total: 724.
+
+### Changed
+- **MCP**: 20 tools -> 22 tools (added `valentino_visual_audit`, `valentino_report`)
+- **MCP version**: 2.7.0 -> 2.12.0
+- **`valentino_audit_css`**: now accepts `allowTokenDefinitions` parameter
+- **`valentino_audit_html`**: now accepts `allowTokenDefinitions` parameter
+- **`auditHtml()` core**: accepts optional `GuardrailOptions`
+- **Visual audit selectors**: expanded to include `header`, `nav`, `footer`, `.container`, `.wrapper`, `article`, `aside`
+- **Help text**: updated with all new flags and `mcp` command
+
 ## [Unreleased] — develop
 
 ### Added
