@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Layout contracts (#3083)**: nuovo comando `valentino layout-contract <init|verify>` (mirror di grid-contract #3040) su regioni semantiche header/sidebar/main/footer. `init` genera il contratto da una pagina (file o URL); `verify` controlla via Playwright: sidebar non sovrappone main, header/footer non coprono main, main contenuto entro il viewport (orizzontale), coerenza z-order dichiarato. Violazioni con `region`/`selector` nel report JSON stabile (`--json`). Logica di analisi pura (`analyzeLayout`) Node-testabile. Parte del Visual QA Guardrail (#3080).
+
 ## [2.14.0] — 2026-06-21
 
 ### Added

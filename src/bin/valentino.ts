@@ -30,6 +30,7 @@ import { runVisualAuditCmd } from './commands/visual-audit.js';
 import { runReport } from './commands/report.js';
 import { runWatch } from './commands/watch.js';
 import { runGridContract } from './commands/grid-contract.js';
+import { runLayoutContract } from './commands/layout-contract.js';
 import { runTemplateAudit } from './commands/template-audit.js';
 import { runReviewNotes } from './commands/review-notes.js';
 import { runAuditDomCmd } from './commands/audit-dom.js';
@@ -142,6 +143,10 @@ switch (command) {
         runGridContract(args).catch(e => { console.error(e); process.exit(1); });
         break;
 
+    case 'layout-contract':
+        runLayoutContract(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
     case 'template-audit':
         runTemplateAudit(args);
         break;
@@ -197,6 +202,8 @@ Usage:
   valentino watch <file|directory>                                   Watch for changes and auto-audit
   valentino grid-contract init <file.html> [--selector s] [--out f]  Generate grid layout contract from DOM
   valentino grid-contract verify <file.html> --contract <file.json>  Verify DOM matches grid contract
+  valentino layout-contract init <file.html|URL> [--out f]           Generate region layout contract (header/sidebar/main/footer)
+  valentino layout-contract verify <file.html|URL> --contract <f>    Verify regions: no overlap, no cover, in-viewport, z-order
   valentino template-audit <file> [--template jinja2|twig|ejs]       Detect template/CSS conflicts (auto-detect engine)
   valentino review-notes new <name> [--mode full] [--out file.json]  Create review session
   valentino review-notes add <session.json> "comment" [--severity]   Add note to session
