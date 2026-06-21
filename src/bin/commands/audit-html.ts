@@ -4,17 +4,41 @@ import { auditHtml, fixHtml } from '../../core/audit-html.js';
 import type { GuardrailOptions } from '../../core/guardrails.js';
 import { createBackup, computeDiff, formatDiff, writeFixed, parseFixArgs } from '../../core/backup.js';
 import { resolveGuardrailOptions } from '../../core/guardrail-config.js';
+import { createJsonOutput, printJson } from '../../core/json-output.js';
 
 export function runAuditHtml(args: string[]): void {
     const { fix, noBackup, file } = parseFixArgs(args);
     const allowTokenDefs = args.includes('--allow-token-definitions');
+    const json = args.includes('--json');
     if (!file) {
-        console.error('Usage: valentino audit-html <path-to-html-file> [--fix] [--no-backup] [--allow-token-definitions]');
+        console.error('Usage: valentino audit-html <path-to-html-file> [--fix] [--no-backup] [--allow-token-definitions] [--json]');
         process.exit(1);
     }
     const html = readFileSync(file, 'utf-8');
     const opts: GuardrailOptions | undefined = resolveGuardrailOptions(allowTokenDefs, dirname(file));
     const result = auditHtml(html, opts);
+
+    if (json) {
+        const passed = result.valid;
+        printJson(createJsonOutput({
+            tool: 'audit-html',
+            file,
+            passed,
+            exitCode: passed ? 0 : 1,
+            sections: [{
+                name: 'HTML Audit',
+                status: passed ? 'pass' : 'fail',
+                violations: result.violations,
+                warnings: [],
+            }],
+            summary: passed
+                ? `No violations in ${result.styleTagCount} <style> tag(s), ${result.inlineStyleCount} inline style(s)`
+                : `${result.violations.length} violation(s) in ${result.styleTagCount} <style> tag(s), ${result.inlineStyleCount} inline style(s)`,
+        }));
+        if (!passed) process.exit(1);
+        return;
+    }
+
     console.log(`Scanned: ${result.styleTagCount} <style> tag(s), ${result.inlineStyleCount} inline style(s)\n`);
     if (result.valid) {
         console.log('✅ No guardrail violations found.');

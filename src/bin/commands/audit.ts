@@ -4,21 +4,40 @@ import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedC
 import type { GuardrailOptions } from '../../core/guardrails.js';
 import { createBackup, computeDiff, formatDiff, writeFixed, parseFixArgs } from '../../core/backup.js';
 import { resolveGuardrailOptions } from '../../core/guardrail-config.js';
+import { createJsonOutput, printJson } from '../../core/json-output.js';
 
 export function runAudit(args: string[]): void {
     const { fix, noBackup, file } = parseFixArgs(args);
     const allowTokenDefs = args.includes('--allow-token-definitions');
+    const json = args.includes('--json');
     if (!file) {
-        console.error('Usage: valentino audit <path-to-css-file> [--fix] [--no-backup] [--allow-token-definitions]');
+        console.error('Usage: valentino audit <path-to-css-file> [--fix] [--no-backup] [--allow-token-definitions] [--json]');
         process.exit(1);
     }
     const css = readFileSync(file, 'utf-8');
     const opts: GuardrailOptions | undefined = resolveGuardrailOptions(allowTokenDefs, dirname(file));
-    const all = [
-        ...checkNoHardcodedPx(css, opts),
-        ...checkNoHardcodedColor(css, opts),
-        ...checkNoNamedColor(css, opts),
-    ];
+    const px = checkNoHardcodedPx(css, opts);
+    const color = checkNoHardcodedColor(css, opts);
+    const named = checkNoNamedColor(css, opts);
+    const all = [...px, ...color, ...named];
+
+    if (json) {
+        const passed = all.length === 0;
+        printJson(createJsonOutput({
+            tool: 'audit',
+            file,
+            passed,
+            exitCode: passed ? 0 : 1,
+            sections: [
+                { name: 'Hardcoded px', status: px.length === 0 ? 'pass' : 'fail', violations: px, warnings: [] },
+                { name: 'Hardcoded color', status: color.length === 0 ? 'pass' : 'fail', violations: color, warnings: [] },
+                { name: 'Named color', status: named.length === 0 ? 'pass' : 'fail', violations: named, warnings: [] },
+            ],
+            summary: passed ? 'No guardrail violations' : `${all.length} violation(s) found`,
+        }));
+        if (!passed) process.exit(1);
+        return;
+    }
     if (all.length === 0) {
         console.log('✅ No guardrail violations found.');
         return;
