@@ -22,6 +22,8 @@ import { figmaToPageSpec, fetchFigmaFile, type FigmaImportOptions } from '../cor
 import { generateImage, generatePlaceholder, type ImageGenerationRequest, type ImageProviderConfig } from '../core/providers/image.js';
 import { runVisualAudit, runResponsiveAudit } from '../core/visual-audit.js';
 import { generateReport } from '../core/report.js';
+import { runAuditDom, auditDomToJson } from '../core/audit-dom.js';
+import { suggestFixes, suggestFixToJson, formatPatch, formatTable } from '../core/suggest-fix.js';
 import type { AuditProfile } from '../core/spa-profile.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
 
@@ -633,12 +635,50 @@ server.tool(
   },
 );
 
+// ─── DOM Audit ────────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_audit_dom',
+  'Audit runtime DOM at a live URL via Playwright. Detects inline styles injected by JS, horizontal overflow, console errors, 404 resources, and interactive elements without accessible labels.',
+  {
+    url: z.string().describe('URL to audit (e.g., http://localhost:3000)'),
+    json: z.boolean().optional().describe('Return structured JSON output (default: false)'),
+  },
+  async ({ url, json }) => {
+    const result = await runAuditDom(url);
+    if (json) return jsonResult(auditDomToJson(result));
+    return jsonResult(result);
+  },
+);
+
+// ─── Suggest Fix ──────────────────────────────────────────────────────────
+
+server.tool(
+  'valentino_suggest_fix',
+  'Suggest non-destructive fixes for CSS/HTML violations: inline style→class, 0px→0, px→rem/token, hardcoded color→token. Returns suggestions as patch, table, or JSON.',
+  {
+    content: z.string().describe('File content (CSS or HTML)'),
+    filePath: z.string().describe('File path (used for format detection and output)'),
+    format: z.enum(['patch', 'table', 'json']).optional().describe('Output format: patch (unified diff), table (readable), json (structured). Default: json'),
+  },
+  async ({ content, filePath, format }) => {
+    const result = suggestFixes(content, filePath);
+    if (format === 'patch') {
+      return { content: [{ type: 'text' as const, text: formatPatch(result) }] };
+    }
+    if (format === 'table') {
+      return { content: [{ type: 'text' as const, text: formatTable(result) }] };
+    }
+    return jsonResult(suggestFixToJson(result));
+  },
+);
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('valentino-engine MCP server running on stdio (22 tools)');
+  console.error('valentino-engine MCP server running on stdio (24 tools)');
   process.stdin.resume();
 }
 
