@@ -22,8 +22,8 @@ describe('json-output', () => {
     expect(output.summary).toBe('All good');
   });
 
-  it('SCHEMA_VERSION is 1', () => {
-    expect(SCHEMA_VERSION).toBe(1);
+  it('SCHEMA_VERSION is 2', () => {
+    expect(SCHEMA_VERSION).toBe(2);
   });
 
   it('reads version from package.json', () => {
@@ -89,7 +89,7 @@ describe('json-output', () => {
     });
     const json = JSON.parse(JSON.stringify(output));
     expect(json.tool).toBe('audit');
-    expect(json.schemaVersion).toBe(1);
+    expect(json.schemaVersion).toBe(2);
     expect(json.sections).toHaveLength(1);
     expect(json.passed).toBe(true);
   });

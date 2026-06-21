@@ -1,7 +1,9 @@
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-export const SCHEMA_VERSION = 1;
+// v2 (#3081): added optional `screenshot` field (path to the captured PNG
+// artifact, or null when unavailable). Additive/backward-compatible.
+export const SCHEMA_VERSION = 2;
 
 export interface JsonSection {
   name: string;
@@ -20,6 +22,8 @@ export interface JsonOutput {
   exitCode: number;
   sections: JsonSection[];
   summary: string;
+  /** Path to the captured screenshot artifact, or null when unavailable (#3081). */
+  screenshot?: string | null;
 }
 
 let cachedVersion: string | undefined;
@@ -42,6 +46,7 @@ export function createJsonOutput(opts: {
   exitCode: number;
   sections: JsonSection[];
   summary: string;
+  screenshot?: string | null;
 }): JsonOutput {
   return {
     tool: opts.tool,
@@ -53,6 +58,7 @@ export function createJsonOutput(opts: {
     exitCode: opts.exitCode,
     sections: opts.sections,
     summary: opts.summary,
+    screenshot: opts.screenshot,
   };
 }
 

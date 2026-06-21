@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **Screenshot artifact sempre allegato (#3081)**: `visual-audit` e `audit-dom` catturano sempre uno screenshot PNG full-page; il path è esposto nel report JSON stabile (campo `screenshot`) e stampato nell'output testuale. In `--responsive` un PNG per viewport. Flag `--screenshot-dir <dir>` (default `.valentino/screenshots`) e `--no-screenshot`. Se Playwright non è installato: `screenshot=null` con `screenshotReason`. Parte del Visual QA Guardrail (#3080).
+
+### Changed
+- **JSON schema bump 1 → 2**: aggiunto il campo opzionale `screenshot` allo schema uniforme (`json-output.ts`). Additivo/backward-compatible.
+
 ## [2.14.0] — 2026-06-21
 
 ### Added
