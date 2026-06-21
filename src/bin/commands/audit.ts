@@ -1,7 +1,9 @@
 import { readFileSync } from 'fs';
+import { dirname } from 'path';
 import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor, fixNamedColors } from '../../core/guardrails.js';
 import type { GuardrailOptions } from '../../core/guardrails.js';
 import { createBackup, computeDiff, formatDiff, writeFixed, parseFixArgs } from '../../core/backup.js';
+import { resolveGuardrailOptions } from '../../core/guardrail-config.js';
 
 export function runAudit(args: string[]): void {
     const { fix, noBackup, file } = parseFixArgs(args);
@@ -11,7 +13,7 @@ export function runAudit(args: string[]): void {
         process.exit(1);
     }
     const css = readFileSync(file, 'utf-8');
-    const opts: GuardrailOptions | undefined = allowTokenDefs ? { allowTokenDefinitions: true } : undefined;
+    const opts: GuardrailOptions | undefined = resolveGuardrailOptions(allowTokenDefs, dirname(file));
     const all = [
         ...checkNoHardcodedPx(css, opts),
         ...checkNoHardcodedColor(css, opts),
