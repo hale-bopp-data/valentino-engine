@@ -36,7 +36,7 @@ export function runProbe(subcommand: string, args: string[]): void {
     const profile: AuditProfile = profileArg && isValidProfile(profileArg) ? profileArg : 'landing';
 
     if (!file) {
-        console.error('Usage: valentino probe <rhythm|hero|integrity|all> <path-to-spec.json> [--json] [--profile landing|spa|dashboard]');
+        console.error('Usage: valentino probe <rhythm|hero|integrity|all> <path-to-spec.json> [--json] [--profile landing|spa|dashboard|chat|data-table|form]');
         process.exit(1);
     }
 
