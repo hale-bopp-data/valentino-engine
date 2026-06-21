@@ -11,12 +11,13 @@ export async function runVisualAuditCmd(args: string[]): Promise<void> {
     const source = args.find(a => !a.startsWith('-'));
     const responsive = args.includes('--responsive');
     const json = args.includes('--json');
+    const debug = args.includes('--debug');
     const profileArg = args.find(a => a.startsWith('--profile'))?.split('=')[1]
         || (args.includes('--profile') ? args[args.indexOf('--profile') + 1] : undefined);
     const profile: AuditProfile = profileArg && isValidProfile(profileArg) ? profileArg : 'landing';
 
     if (!source) {
-        console.error('Usage: valentino visual-audit <file.html|URL> [--responsive] [--json] [--profile landing|spa|dashboard]');
+        console.error('Usage: valentino visual-audit <file.html|URL> [--responsive] [--json] [--debug] [--profile landing|spa|dashboard]');
         process.exit(EXIT_CODES.TOOL_ERROR);
     }
 
@@ -24,7 +25,7 @@ export async function runVisualAuditCmd(args: string[]): Promise<void> {
         const htmlOrUrl = isUrl(source) ? source : readFileSync(source, 'utf-8');
 
         if (responsive) {
-            const result = await runResponsiveAudit(htmlOrUrl, { profile });
+            const result = await runResponsiveAudit(htmlOrUrl, { profile, debug });
             if (json) {
                 console.log(JSON.stringify(result, null, 2));
             } else {
@@ -33,7 +34,7 @@ export async function runVisualAuditCmd(args: string[]): Promise<void> {
             if (!result.viewports[0]?.available) process.exit(EXIT_CODES.NO_BROWSER);
             if (!result.passed) process.exit(EXIT_CODES.VIOLATIONS);
         } else {
-            const result = await runVisualAudit(htmlOrUrl, { profile });
+            const result = await runVisualAudit(htmlOrUrl, { profile, debug });
             if (json) {
                 console.log(JSON.stringify(result, null, 2));
             } else {
