@@ -1,6 +1,6 @@
 import type { VisualAuditViolation } from './visual-audit.js';
 
-export const AUDIT_PROFILES = ['landing', 'spa', 'dashboard', 'chat', 'data-table', 'form'] as const;
+export const AUDIT_PROFILES = ['landing', 'spa', 'dashboard', 'chat', 'data-table', 'form', 'responsive'] as const;
 export type AuditProfile = typeof AUDIT_PROFILES[number];
 
 export interface ProfileConfig {
@@ -87,6 +87,18 @@ const FORM_CONFIG: ProfileConfig = {
   visualChecks: ['overflow', 'collision', 'contrast', 'form-labels', 'nav-landmark'],
 };
 
+const RESPONSIVE_CONFIG: ProfileConfig = {
+  label: 'Responsive / Breakpoint',
+  rhythmRules: {
+    heroFirst: false,
+    surfaceMonotony: false,
+    consecutiveRhythm: false,
+    spacerBetweenSameSurface: false,
+  },
+  visualSelectors: 'main, section, article, aside, header, footer, nav, [role=navigation], [role=main], .container, .wrapper, .card, .panel, table, form, img',
+  visualChecks: ['overflow', 'collision', 'contrast', 'nav-landmark', 'responsive-rules'],
+};
+
 const PROFILES: Record<AuditProfile, ProfileConfig> = {
   landing: LANDING_CONFIG,
   spa: SPA_CONFIG,
@@ -94,6 +106,7 @@ const PROFILES: Record<AuditProfile, ProfileConfig> = {
   chat: CHAT_CONFIG,
   'data-table': DATA_TABLE_CONFIG,
   form: FORM_CONFIG,
+  responsive: RESPONSIVE_CONFIG,
 };
 
 export function getProfileConfig(profile: AuditProfile): ProfileConfig {
@@ -299,6 +312,90 @@ export function buildSpaAuditScript(profile: AuditProfile): string {
   });
   meta.tableRowCount = tableRows;` : '';
 
+  const responsiveRulesCheck = checks.includes('responsive-rules') ? `
+  const vw = window.innerWidth;
+  const isMobile = vw <= 600;
+  const isTablet = vw > 600 && vw <= 1024;
+  meta.viewportWidth = vw;
+  meta.breakpoint = isMobile ? 'mobile' : (isTablet ? 'tablet' : 'desktop');
+
+  let escapingCount = 0;
+  document.querySelectorAll('main, main *, section, article, aside, header, footer, nav, .card, .panel, table, img, pre').forEach(el => {
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    if (rect.right > vw + 2 || rect.left < -2) {
+      escapingCount++;
+      if (escapingCount <= 20) {
+        warnings.push({
+          type: 'overflow',
+          severity: 'warning',
+          selector: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(' ')[0] : ''),
+          message: 'Element escapes the ' + meta.breakpoint + ' viewport (left=' + Math.round(rect.left) + ', right=' + Math.round(rect.right) + ', vw=' + vw + ') - broken reflow',
+        });
+      }
+    }
+  });
+  meta.reflowEscaping = escapingCount;
+
+  let clippedCount = 0;
+  document.querySelectorAll('main *, .card, .panel, section, article, li, td, th, button, a, h1, h2, h3').forEach(el => {
+    const cs = window.getComputedStyle(el);
+    if ((cs.overflowX === 'hidden' || cs.overflow === 'hidden') && el.scrollWidth > el.clientWidth + 4) {
+      clippedCount++;
+      if (clippedCount <= 20) {
+        warnings.push({
+          type: 'overflow',
+          severity: 'warning',
+          selector: el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(' ')[0] : ''),
+          message: 'Content clipped by overflow:hidden (scrollWidth=' + el.scrollWidth + ' > clientWidth=' + el.clientWidth + ') at ' + meta.breakpoint,
+        });
+      }
+    }
+  });
+  meta.clippedContent = clippedCount;
+
+  if (isMobile) {
+    let smallTargets = 0;
+    document.querySelectorAll('a[href], button, [role=button], input:not([type=hidden]), select, textarea, [role=link], [role=tab], [onclick]').forEach(el => {
+      const cs = window.getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+      if (cs.display === 'none' || cs.visibility === 'hidden' || rect.width === 0 || rect.height === 0) return;
+      if (rect.width < 44 || rect.height < 44) {
+        smallTargets++;
+        if (smallTargets <= 20) {
+          warnings.push({
+            type: 'collision',
+            severity: 'warning',
+            selector: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(' ')[0] : ''),
+            message: 'Touch target ' + Math.round(rect.width) + 'x' + Math.round(rect.height) + 'px below 44x44 minimum on mobile',
+          });
+        }
+      }
+    });
+    meta.smallTouchTargets = smallTargets;
+
+    const toggles = document.querySelectorAll('[aria-expanded], [aria-controls], .menu-toggle, .hamburger, .navbar-toggler, [data-toggle=nav], [data-nav-toggle]');
+    let navWithoutCollapse = 0;
+    document.querySelectorAll('nav, [role=navigation]').forEach(nav => {
+      let visibleLinks = 0;
+      nav.querySelectorAll('a[href], [role=link]').forEach(a => {
+        const s = window.getComputedStyle(a);
+        const r = a.getBoundingClientRect();
+        if (s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0) visibleLinks++;
+      });
+      if (visibleLinks > 4 && toggles.length === 0) {
+        navWithoutCollapse++;
+        warnings.push({
+          type: 'missing-element',
+          severity: 'warning',
+          selector: nav.tagName.toLowerCase() + (nav.className && typeof nav.className === 'string' && nav.className.trim() ? '.' + nav.className.trim().split(' ')[0] : ''),
+          message: 'Navigation shows ' + visibleLinks + ' links on mobile with no collapse toggle (hamburger) - menu does not collapse',
+        });
+      }
+    });
+    meta.navWithoutCollapse = navWithoutCollapse;
+  }` : '';
+
   return `
 (threshold) => {
   const violations = [];
@@ -375,7 +472,7 @@ export function buildSpaAuditScript(profile: AuditProfile): string {
       }
     }
   });
-${sidebarCheck}${formLabelsCheck}${tabA11yCheck}${navLandmarkCheck}${chatLayoutCheck}${dataTableLayoutCheck}
+${sidebarCheck}${formLabelsCheck}${tabA11yCheck}${navLandmarkCheck}${chatLayoutCheck}${dataTableLayoutCheck}${responsiveRulesCheck}
   return { violations, warnings, elementCount: sections.length, meta };
 }
 `;
