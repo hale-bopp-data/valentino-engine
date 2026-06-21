@@ -4,6 +4,7 @@ import type { AuditAdvisory, ProfileSignals } from './audit-advisory.js';
 import { buildAdvisory, chooseProfile, formatAdvisory } from './audit-advisory.js';
 import { mkdir } from 'fs/promises';
 import { join } from 'path';
+import { loadPlaywright, evaluateWithRetry, DEFAULT_TIMEOUTS } from './playwright-runtime.js';
 
 export const DEFAULT_SCREENSHOT_DIR = '.valentino/screenshots';
 
@@ -220,25 +221,22 @@ export async function runVisualAudit(
 ): Promise<VisualAuditResult> {
   const t0 = Date.now();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let pw: any;
-  try {
-    // @ts-ignore
-    pw = await import(/* webpackIgnore: true */ 'playwright');
-  } catch {
-    return SKIPPED_RESULT;
+  const loaded = await loadPlaywright();
+  if (!loaded.available) {
+    return { ...SKIPPED_RESULT, summary: `Visual audit skipped: ${loaded.reason}`, screenshotReason: loaded.reason };
   }
+  const pw = loaded.pw;
 
   const {
     viewportWidth = 1440,
     viewportHeight = 900,
     contrastThreshold = 4.5,
-    settleMs = 1000,
+    settleMs = DEFAULT_TIMEOUTS.settleMs,
     url: explicitUrl,
     profile = 'landing',
     debug = false,
     waitForSelector,
-    navTimeoutMs = 30_000,
+    navTimeoutMs = DEFAULT_TIMEOUTS.navMs,
     screenshot = true,
     screenshotDir = DEFAULT_SCREENSHOT_DIR,
   } = options;
@@ -365,7 +363,9 @@ export async function runVisualAudit(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let rawResult: any;
     try {
-      rawResult = await page.evaluate(buildInvocableScript(auditScript, contrastThreshold));
+      rawResult = await evaluateWithRetry(page, buildInvocableScript(auditScript, contrastThreshold), undefined, {
+        onRetry: (n) => consoleMessages.push('[retry] evaluate attempt ' + n + ' after execution-context-destroyed'),
+      });
     } catch (evalErr) {
       const evalMsg = evalErr instanceof Error ? evalErr.message : String(evalErr);
       const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
