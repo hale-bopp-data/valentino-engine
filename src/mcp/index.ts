@@ -26,6 +26,7 @@ import { runAuditDom, auditDomToJson } from '../core/audit-dom.js';
 import { suggestFixes, suggestFixToJson, formatPatch, formatTable } from '../core/suggest-fix.js';
 import type { AuditProfile } from '../core/spa-profile.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
+import { VALENTINO_MCP_VERSION } from './version.js';
 
 // ─── Load guardrails.json (SSoT machine-readable) ────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +42,7 @@ if (existsSync(guardrailsPath)) {
 
 const server = new McpServer({
   name: 'valentino-engine',
-  version: '2.13.0',
+  version: VALENTINO_MCP_VERSION,
 });
 
 function jsonResult(data: unknown) {
