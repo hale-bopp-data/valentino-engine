@@ -209,6 +209,7 @@ Usage:
   valentino review-notes add <session.json> "comment" [--severity]   Add note to session
   valentino review-notes export <session.json> [--out file.md]       Export session to markdown
   valentino review-notes stats <session.json>                        Session statistics
+  valentino review-notes from-audit <audit.json> [--out file.json]   Seed review session from a visual-audit JSON (#3089)
   valentino audit-dom <url> [--json] [--responsive]                  Runtime DOM audit via Playwright (inline styles, overflow, 404, a11y)
   valentino suggest-fix <file> [--format patch|table|json] [--json]  Suggest fixes without modifying (inline→class, px→rem, color→token)
   valentino mcp                                                      Start MCP server (stdio, 24 tools)
