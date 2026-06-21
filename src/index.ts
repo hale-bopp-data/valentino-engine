@@ -278,3 +278,7 @@ export type { TemplateEngine, TemplateWarning, TemplateAuditResult } from './cor
 // Review Notes — structured review annotations for LLM/operator handoff (#3045)
 export { createNote, updateNote, createSession, addNote, updateSessionStatus, validateNote, validateSession, exportSessionMarkdown, parseSessionJson, sessionStats, NOTE_TYPES, SEVERITIES, OUTCOMES, STATES } from './core/review-notes.js';
 export type { NoteType, NoteSeverity, NoteOutcome, NoteState, ReviewMode, SessionStatus, NoteRecord, ReviewSession, ValidationError } from './core/review-notes.js';
+
+// Audit -> Review Notes bridge (#3089): seed a triage session from automated audit findings
+export { auditResultToNotes, responsiveResultToNotes, seedSessionFromAudit, violationToNote, isResponsiveResult, mapNoteType, mapNoteSeverity, mapNoteOutcome, suggestedDirectionFor } from './core/audit-to-notes.js';
+export type { AuditToNotesOptions, SeedSessionOptions } from './core/audit-to-notes.js';
