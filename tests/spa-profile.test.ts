@@ -278,6 +278,98 @@ describe('spa-profile — chat / data-table / form profiles (#3084)', () => {
     });
 });
 
+describe('spa-profile — responsive profile (#3082)', () => {
+    describe('getProfileConfig', () => {
+        it('returns responsive config with relaxed rhythm rules', () => {
+            const config = getProfileConfig('responsive');
+            expect(config.label).toContain('Responsive');
+            expect(config.rhythmRules.heroFirst).toBe(false);
+            expect(config.rhythmRules.surfaceMonotony).toBe(false);
+        });
+
+        it('responsive selectors include layout + nav + media elements', () => {
+            const config = getProfileConfig('responsive');
+            expect(config.visualSelectors).toContain('nav');
+            expect(config.visualSelectors).toContain('img');
+            expect(config.visualSelectors).toContain('.card');
+        });
+    });
+
+    describe('isValidProfile', () => {
+        it('accepts responsive', () => {
+            expect(isValidProfile('responsive')).toBe(true);
+        });
+    });
+
+    describe('buildSpaAuditScript — responsive', () => {
+        it('generates valid JS scaffolding', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain('threshold');
+            expect(script).toContain('elementCount');
+            expect(script).toContain('window.innerWidth');
+        });
+
+        it('computes the breakpoint label', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain("meta.breakpoint = isMobile ? 'mobile'");
+        });
+
+        it('includes broken-reflow (viewport escape) check', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain('broken reflow');
+            expect(script).toContain('reflowEscaping');
+        });
+
+        it('includes clipped-content check', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain('Content clipped by overflow:hidden');
+            expect(script).toContain('clippedContent');
+        });
+
+        it('includes mobile touch-target check (44x44)', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain('below 44x44 minimum on mobile');
+            expect(script).toContain('smallTouchTargets');
+        });
+
+        it('includes mobile nav-collapse check', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain('menu does not collapse');
+            expect(script).toContain('navWithoutCollapse');
+        });
+
+        it('gates mobile-only rules behind isMobile', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).toContain('if (isMobile)');
+        });
+
+        it('does not include chat or data-table only checks', () => {
+            const script = buildSpaAuditScript('responsive');
+            expect(script).not.toContain('Chat composer is not pinned');
+            expect(script).not.toContain('has no sticky header');
+        });
+    });
+
+    describe('landing omits responsive-rules', () => {
+        it('landing script has no responsive markers', () => {
+            const script = buildSpaAuditScript('landing');
+            expect(script).not.toContain('broken reflow');
+            expect(script).not.toContain('below 44x44 minimum on mobile');
+        });
+    });
+
+    describe('probeRhythm with responsive profile skips landing rules', () => {
+        it('does not warn on hero-not-first', () => {
+            const result = probeRhythm(makeSpec([
+                { type: 'cards', variant: 'catalog', items: [] },
+                { type: 'hero', titleKey: 'h' },
+            ]), { profile: 'responsive' });
+            expect(result.warnings.filter(w => w.rule === 'hero-first')).toHaveLength(0);
+            expect(result.profile).toBe('responsive');
+        });
+    });
+});
+
 describe('probeRhythm with SPA profile', () => {
     it('does not warn on hero-not-first with SPA profile', () => {
         const result = probeRhythm(makeSpec([
