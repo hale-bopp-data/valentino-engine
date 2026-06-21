@@ -2,11 +2,8 @@
 
 ## [Unreleased]
 
-### Added
-- **Screenshot artifact sempre allegato (#3081)**: `visual-audit` e `audit-dom` catturano sempre uno screenshot PNG full-page; il path è esposto nel report JSON stabile (campo `screenshot`) e stampato nell'output testuale. In `--responsive` un PNG per viewport. Flag `--screenshot-dir <dir>` (default `.valentino/screenshots`) e `--no-screenshot`. Se Playwright non è installato: `screenshot=null` con `screenshotReason`. Parte del Visual QA Guardrail (#3080).
-
-### Changed
-- **JSON schema bump 1 → 2**: aggiunto il campo opzionale `screenshot` allo schema uniforme (`json-output.ts`). Additivo/backward-compatible.
+### Fixed
+- **MCP server version drift (#3057)**: the MCP server reported a hardcoded `2.13.0` while `package.json` was `2.14.0`. The server version is now derived dynamically from `package.json` (`src/mcp/version.ts`), eliminating the drift permanently, with a regression test. The #3057 MCP parameters (`profile`/`debug`/`allowedTokenPrefixes`) shipped in 2.14.0; this completes #3057 by fixing version reporting.
 
 ## [2.14.0] — 2026-06-21
 
