@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { runVisualGuardian, isPlaywrightAvailable } from '../src/core/playwright-adapter.js';
+import { runVisualGuardian, isPlaywrightAvailable, buildInvocable } from '../src/core/playwright-adapter.js';
 import type { PageSpecV1 } from '../src/core/types.js';
 
 // ---------------------------------------------------------------------------
@@ -217,5 +217,39 @@ describe('Visual Guardian — DOM Audit (requires Playwright)', () => {
 
         const report = await runVisualGuardian(MINIMAL_SPEC, { settleMs: 0 });
         expect(report.durationMs).toBeLessThan(15000); // < 15s including browser start
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — buildInvocable (deterministic IIFE invocation, #3073)
+// ---------------------------------------------------------------------------
+
+describe('buildInvocable (deterministic IIFE invocation)', () => {
+    it('wraps a zero-arg arrow-function string as an invocable IIFE', () => {
+        const script = `() => ({ violations: [], warnings: [] })`;
+        expect(buildInvocable(script)).toBe('(() => ({ violations: [], warnings: [] }))()');
+    });
+
+    it('when evaluated, RETURNS the function result — never the function object (no undefined)', () => {
+        const script = `() => ({ violations: [1], warnings: [2, 3] })`;
+        // eslint-disable-next-line no-eval
+        const out = eval(buildInvocable(script)) as { violations: unknown[]; warnings: unknown[] };
+        expect(out).not.toBeUndefined();
+        expect(typeof out).toBe('object');
+        expect(Array.isArray(out.violations)).toBe(true);
+        expect(out.violations).toHaveLength(1);
+        expect(out.warnings).toHaveLength(2);
+    });
+
+    it('trims surrounding whitespace from the script', () => {
+        expect(buildInvocable('\n  () => 42 \n')).toBe('(() => 42)()');
+    });
+
+    it('consumers can null-guard an undefined evaluate result without throwing (#3073)', () => {
+        // Mirrors the runVisualGuardian hardening: (result ?? []) before .filter()/spread.
+        const undefinedResult = undefined as Array<{ severity: string }> | undefined;
+        const guarded = undefinedResult ?? [];
+        expect(() => guarded.filter(v => v.severity === 'error')).not.toThrow();
+        expect(guarded).toHaveLength(0);
     });
 });

@@ -1,5 +1,27 @@
 import type { AuditProfile } from './spa-profile.js';
 import { buildSpaAuditScript } from './spa-profile.js';
+import type { AuditAdvisory, ProfileSignals } from './audit-advisory.js';
+import { buildAdvisory, chooseProfile, formatAdvisory } from './audit-advisory.js';
+import { mkdir } from 'fs/promises';
+import { join } from 'path';
+import { loadPlaywright, evaluateWithRetry, DEFAULT_TIMEOUTS } from './playwright-runtime.js';
+
+export const DEFAULT_SCREENSHOT_DIR = '.valentino/screenshots';
+
+/**
+ * Deterministic-enough filename for a screenshot artifact (#3081).
+ * Slugifies the source (URL host/path or 'inline-html'), embeds the viewport
+ * and an ISO timestamp so per-viewport responsive runs never collide.
+ */
+export function screenshotFileName(source: string, viewportWidth: number, viewportHeight: number): string {
+  const slug = source
+    .replace(/^https?:\/\//i, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || 'inline-html';
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return `valentino-${slug}-${viewportWidth}x${viewportHeight}-${ts}.png`;
+}
 
 export interface VisualAuditViolation {
   type: 'overflow' | 'collision' | 'contrast' | 'missing-element';
@@ -24,6 +46,11 @@ export interface VisualAuditResult {
   pageErrors?: string[];
   pageTitle?: string;
   diagnostics?: string;
+  advisory?: AuditAdvisory;
+  /** Path to the captured screenshot artifact, or null when unavailable (#3081). */
+  screenshot?: string | null;
+  /** Reason the screenshot is null (e.g. 'Playwright not installed', 'disabled'). */
+  screenshotReason?: string;
 }
 
 export interface ResponsiveAuditResult {
@@ -40,8 +67,16 @@ export interface VisualAuditOptions {
   settleMs?: number;
   url?: string;
   responsive?: boolean;
-  profile?: AuditProfile;
+  profile?: AuditProfile | 'auto';
   debug?: boolean;
+  /** CSS selector to await before running the audit (SPA/dashboard readiness). */
+  waitForSelector?: string;
+  /** Navigation + waitForSelector timeout in ms (default: 30000). */
+  navTimeoutMs?: number;
+  /** Capture a full-page screenshot artifact (default: true) (#3081). */
+  screenshot?: boolean;
+  /** Directory for screenshot artifacts (default: .valentino/screenshots) (#3081). */
+  screenshotDir?: string;
 }
 
 export const EXIT_CODES = {
@@ -66,6 +101,8 @@ const SKIPPED_RESULT: VisualAuditResult = {
   durationMs: 0,
   summary: 'Visual audit skipped: Playwright not installed. Run `npm install --save-dev playwright` and `npx playwright install chromium` to enable.',
   phase: 'init',
+  screenshot: null,
+  screenshotReason: 'Playwright not installed',
 };
 
 const AUDIT_SCRIPT = `
@@ -148,8 +185,34 @@ const AUDIT_SCRIPT = `
 }
 `;
 
+const PROFILE_DETECT_SCRIPT = `
+() => {
+  const n = (sel) => { try { return document.querySelectorAll(sel).length; } catch (e) { return 0; } };
+  return {
+    grids: n('[role=grid], [role=table], table, .widget, .card, .dashboard'),
+    appShell: n('[role=main], main, aside, .sidebar, [role=navigation], nav, [role=complementary]'),
+    sections: n('section[data-section-index], [data-section-index]'),
+    hero: n('.hero, [data-section-type="hero"], header h1'),
+  };
+}
+`;
+
 function isUrl(input: string): boolean {
   return /^https?:\/\//i.test(input);
+}
+
+/**
+ * Wrap a string audit script (an arrow-function expression) as an IIFE so that
+ * `page.evaluate` ALWAYS resolves to the function's return value — never the
+ * function object itself (which serializes to `undefined`).
+ *
+ * Passing a raw function-shaped string to `page.evaluate(str, arg)` relies on
+ * Playwright's string->function auto-call heuristic, which can resolve to
+ * `undefined` on some SPA/dashboard pages. The IIFE makes invocation explicit
+ * and deterministic, independent of that heuristic.
+ */
+export function buildInvocableScript(auditScript: string, threshold: number): string {
+  return `(${auditScript.trim()})(${JSON.stringify(threshold)})`;
 }
 
 export async function runVisualAudit(
@@ -158,26 +221,28 @@ export async function runVisualAudit(
 ): Promise<VisualAuditResult> {
   const t0 = Date.now();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let pw: any;
-  try {
-    // @ts-ignore
-    pw = await import(/* webpackIgnore: true */ 'playwright');
-  } catch {
-    return SKIPPED_RESULT;
+  const loaded = await loadPlaywright();
+  if (!loaded.available) {
+    return { ...SKIPPED_RESULT, summary: `Visual audit skipped: ${loaded.reason}`, screenshotReason: loaded.reason };
   }
+  const pw = loaded.pw;
 
   const {
     viewportWidth = 1440,
     viewportHeight = 900,
     contrastThreshold = 4.5,
-    settleMs = 1000,
+    settleMs = DEFAULT_TIMEOUTS.settleMs,
     url: explicitUrl,
     profile = 'landing',
     debug = false,
+    waitForSelector,
+    navTimeoutMs = DEFAULT_TIMEOUTS.navMs,
+    screenshot = true,
+    screenshotDir = DEFAULT_SCREENSHOT_DIR,
   } = options;
 
-  const auditScript = profile === 'landing' ? AUDIT_SCRIPT : buildSpaAuditScript(profile);
+  let screenshotPath: string | null = null;
+  let screenshotReason: string | undefined = screenshot ? undefined : 'disabled';
 
   const targetUrl = explicitUrl || (isUrl(htmlOrUrl) ? htmlOrUrl : undefined);
   const html = targetUrl ? undefined : htmlOrUrl;
@@ -211,7 +276,7 @@ export async function runVisualAudit(
 
     phase = 'content-load';
     if (targetUrl) {
-      const response = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 30_000 });
+      const response = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: navTimeoutMs });
       if (!response || response.status() >= 400) {
         pageTitle = await page.title().catch(() => '');
         return {
@@ -231,6 +296,8 @@ export async function runVisualAudit(
           consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
           pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
           pageTitle: pageTitle || undefined,
+          screenshot: screenshotPath,
+          screenshotReason: screenshotReason ?? 'page returned error status before screenshot capture',
         };
       }
     } else {
@@ -238,7 +305,50 @@ export async function runVisualAudit(
     }
 
     if (settleMs > 0) await page.waitForTimeout(settleMs);
+
+    if (waitForSelector) {
+      phase = 'wait-for-selector';
+      try {
+        await page.waitForSelector(waitForSelector, { state: 'attached', timeout: navTimeoutMs });
+      } catch {
+        consoleMessages.push(
+          `[wait-for] selector "${waitForSelector}" not found within ${navTimeoutMs}ms — auditing current DOM anyway`,
+        );
+      }
+    }
+
+    if (screenshot) {
+      phase = 'screenshot';
+      try {
+        await mkdir(screenshotDir, { recursive: true });
+        const file = screenshotFileName(targetUrl || 'inline-html', viewportWidth, viewportHeight);
+        const path = join(screenshotDir, file);
+        await page.screenshot({ path, fullPage: true });
+        screenshotPath = path;
+        if (debug) consoleMessages.push(`[debug] screenshot saved: ${path}`);
+      } catch (ssErr) {
+        screenshotPath = null;
+        screenshotReason = ssErr instanceof Error ? ssErr.message : String(ssErr);
+        consoleMessages.push(`[screenshot] capture failed: ${screenshotReason}`);
+      }
+    }
+
     pageTitle = await page.title().catch(() => '');
+
+    let effectiveProfile: AuditProfile = profile === 'auto' ? 'landing' : profile;
+    let detectedProfile: AuditProfile | undefined;
+    if (profile === 'auto') {
+      phase = 'profile-detect';
+      try {
+        const signals = await page.evaluate(`(${PROFILE_DETECT_SCRIPT.trim()})()`);
+        detectedProfile = chooseProfile(signals as ProfileSignals);
+        effectiveProfile = detectedProfile;
+        if (debug) consoleMessages.push(`[debug] auto profile detected: ${detectedProfile} (signals=${JSON.stringify(signals)})`);
+      } catch {
+        // detection failed → keep landing default
+      }
+    }
+    const auditScript = effectiveProfile === 'landing' ? AUDIT_SCRIPT : buildSpaAuditScript(effectiveProfile);
 
     phase = 'audit-script';
 
@@ -253,7 +363,9 @@ export async function runVisualAudit(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let rawResult: any;
     try {
-      rawResult = await page.evaluate(auditScript, contrastThreshold);
+      rawResult = await evaluateWithRetry(page, buildInvocableScript(auditScript, contrastThreshold), undefined, {
+        onRetry: (n) => consoleMessages.push('[retry] evaluate attempt ' + n + ' after execution-context-destroyed'),
+      });
     } catch (evalErr) {
       const evalMsg = evalErr instanceof Error ? evalErr.message : String(evalErr);
       const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
@@ -286,6 +398,8 @@ export async function runVisualAudit(
         pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
         pageTitle: pageTitle || undefined,
         diagnostics,
+        screenshot: screenshotPath,
+        screenshotReason,
       };
     }
 
@@ -304,11 +418,15 @@ export async function runVisualAudit(
     if (!result || !Array.isArray(result.violations)) {
       const rawType = result === null ? 'null' : typeof result;
       const rawPreview = JSON.stringify(result)?.substring(0, 200) ?? 'undefined';
+      const readyState = await page.evaluate('document.readyState').catch(() => 'unknown');
+      const docUrl = await page.evaluate('document.URL').catch(() => 'unknown');
       const diagnostics = [
         `Audit script returned malformed data in phase "${phase}"`,
         `Expected: {violations: [], warnings: [], elementCount: number}`,
         `Received type: ${rawType}`,
         `Received preview: ${rawPreview}`,
+        `document.readyState: ${readyState}`,
+        `document.URL: ${docUrl}`,
         `Page title: ${pageTitle}`,
         consoleMessages.length > 0 ? `Console (${consoleMessages.length}): ${consoleMessages.slice(0, 5).join(' | ')}` : 'Console: empty',
         pageErrors.length > 0 ? `Page errors (${pageErrors.length}): ${pageErrors.slice(0, 3).join(' | ')}` : 'Page errors: none',
@@ -332,11 +450,17 @@ export async function runVisualAudit(
         pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
         pageTitle: pageTitle || undefined,
         diagnostics,
+        screenshot: screenshotPath,
+        screenshotReason,
       };
     }
 
     const durationMs = Date.now() - t0;
     const passed = result.violations.length === 0;
+    const advisory = buildAdvisory(
+      { violations: result.violations, warnings: result.warnings },
+      detectedProfile,
+    );
 
     return {
       passed,
@@ -350,11 +474,14 @@ export async function runVisualAudit(
         : `Visual audit FAILED in ${durationMs}ms — ${result.violations.length} error(s), ${result.warnings.length} warning(s)`,
       viewport: { width: viewportWidth, height: viewportHeight },
       phase: 'complete',
-      profile,
+      profile: effectiveProfile,
       meta: result.meta,
       consoleMessages: consoleMessages.length > 0 ? consoleMessages : undefined,
       pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
       pageTitle: pageTitle || undefined,
+      advisory,
+      screenshot: screenshotPath,
+      screenshotReason,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -384,6 +511,8 @@ export async function runVisualAudit(
       pageErrors: pageErrors.length > 0 ? pageErrors : undefined,
       pageTitle: pageTitle || undefined,
       diagnostics,
+      screenshot: screenshotPath,
+      screenshotReason,
     };
   } finally {
     await browser?.close();
@@ -432,6 +561,8 @@ export function formatVisualAudit(result: VisualAuditResult, source: string): st
   lines.push(`  Elements scanned: ${result.elementCount}`);
   lines.push(`  Duration: ${result.durationMs}ms`);
   if (result.pageTitle) lines.push(`  Page title: ${result.pageTitle}`);
+  if (result.screenshot) lines.push(`  Screenshot: ${result.screenshot}`);
+  else if (result.screenshotReason) lines.push(`  Screenshot: (none — ${result.screenshotReason})`);
   lines.push('');
 
   if (!result.available) {
@@ -476,6 +607,11 @@ export function formatVisualAudit(result: VisualAuditResult, source: string): st
     for (const d of result.diagnostics.split('\n')) {
       lines.push(`  ${d}`);
     }
+    lines.push('');
+  }
+
+  if (result.advisory && result.advisory.recommendations.length > 0) {
+    lines.push(formatAdvisory(result.advisory));
     lines.push('');
   }
 

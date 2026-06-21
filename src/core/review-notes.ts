@@ -24,6 +24,8 @@ export interface NoteRecord {
   pageId?: string;
   targetLabel?: string;
   section?: string;
+  /** Actionable direction for the reviewer (mirrors the Workbench `suggested_direction`). */
+  suggestedDirection?: string;
   tags?: string[];
   createdAt: string;
   updatedAt: string;
@@ -63,13 +65,14 @@ export function createNote(
     pageId: opts.pageId,
     targetLabel: opts.targetLabel,
     section: opts.section,
+    suggestedDirection: opts.suggestedDirection,
     tags: opts.tags,
     createdAt: now,
     updatedAt: now,
   };
 }
 
-export function updateNote(note: NoteRecord, patch: Partial<Pick<NoteRecord, 'comment' | 'type' | 'severity' | 'triageOutcome' | 'state' | 'tags'>>): NoteRecord {
+export function updateNote(note: NoteRecord, patch: Partial<Pick<NoteRecord, 'comment' | 'type' | 'severity' | 'triageOutcome' | 'state' | 'tags' | 'suggestedDirection'>>): NoteRecord {
   return {
     ...note,
     ...patch,
@@ -187,6 +190,7 @@ function formatNoteLine(note: NoteRecord): string {
   if (note.pageId) meta.push(`page: ${note.pageId}`);
   meta.push(`state: ${note.state}`);
   meta.push(`outcome: ${note.triageOutcome}`);
+  if (note.suggestedDirection) meta.push(`direction: ${note.suggestedDirection}`);
   if (note.tags?.length) meta.push(`tags: ${note.tags.join(', ')}`);
   parts.push(`  _${meta.join(' | ')}_`);
   return parts.join('\n');

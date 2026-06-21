@@ -5,8 +5,19 @@ export async function runAuditDomCmd(args: string[]): Promise<void> {
     const json = args.includes('--json');
     const responsive = args.includes('--responsive');
 
+    const getFlagValue = (name: string): string | undefined => {
+        const eq = args.find(a => a.startsWith(`${name}=`));
+        if (eq) return eq.slice(name.length + 1);
+        const i = args.indexOf(name);
+        if (i >= 0 && args[i + 1] && !args[i + 1].startsWith('-')) return args[i + 1];
+        return undefined;
+    };
+    const screenshotDir = getFlagValue('--screenshot-dir');
+    const screenshot = !args.includes('--no-screenshot');
+    const domOpts = { screenshot, screenshotDir };
+
     if (!url) {
-        console.error('Usage: valentino audit-dom <url> [--json] [--responsive]');
+        console.error('Usage: valentino audit-dom <url> [--json] [--responsive] [--screenshot-dir <dir>] [--no-screenshot]');
         process.exit(EXIT_CODES.TOOL_ERROR);
     }
 
@@ -17,7 +28,7 @@ export async function runAuditDomCmd(args: string[]): Promise<void> {
 
     try {
         if (responsive) {
-            const result = await runMultiViewportAuditDom(url);
+            const result = await runMultiViewportAuditDom(url, domOpts);
             if (json) {
                 console.log(JSON.stringify(result, null, 2));
             } else {
@@ -29,7 +40,7 @@ export async function runAuditDomCmd(args: string[]): Promise<void> {
             if (!result.viewports[0]?.available) process.exit(EXIT_CODES.NO_BROWSER);
             if (!result.passed) process.exit(EXIT_CODES.VIOLATIONS);
         } else {
-            const result = await runAuditDom(url);
+            const result = await runAuditDom(url, domOpts);
             if (json) {
                 console.log(JSON.stringify(auditDomToJson(result), null, 2));
             } else {

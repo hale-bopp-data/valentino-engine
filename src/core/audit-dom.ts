@@ -1,4 +1,7 @@
 import { createJsonOutput, type JsonOutput } from './json-output.js';
+import { mkdir } from 'fs/promises';
+import { join } from 'path';
+import { DEFAULT_SCREENSHOT_DIR, screenshotFileName } from './visual-audit.js';
 
 export interface DomViolation {
   type: 'inline-style' | 'overflow' | 'console-error' | 'network-error' | 'missing-label';
@@ -20,12 +23,20 @@ export interface AuditDomResult {
   summary: string;
   viewport?: { width: number; height: number };
   pageTitle?: string;
+  /** Path to the captured screenshot artifact, or null when unavailable (#3081). */
+  screenshot?: string | null;
+  /** Reason the screenshot is null (e.g. 'Playwright not installed', 'disabled'). */
+  screenshotReason?: string;
 }
 
 export interface AuditDomOptions {
   viewports?: Array<{ width: number; height: number; label: string }>;
   settleMs?: number;
   json?: boolean;
+  /** Capture a full-page screenshot artifact (default: true) (#3081). */
+  screenshot?: boolean;
+  /** Directory for screenshot artifacts (default: .valentino/screenshots) (#3081). */
+  screenshotDir?: string;
 }
 
 export const EXIT_CODES = {
@@ -51,6 +62,8 @@ const SKIPPED_RESULT: AuditDomResult = {
   failedResources: [],
   durationMs: 0,
   summary: 'Playwright not available — audit-dom skipped.',
+  screenshot: null,
+  screenshotReason: 'Playwright not installed',
 };
 
 const AUDIT_DOM_SCRIPT = `
@@ -126,11 +139,13 @@ export async function runAuditDom(
     return SKIPPED_RESULT;
   }
 
-  const { settleMs = 2000 } = options;
+  const { settleMs = 2000, screenshot = true, screenshotDir = DEFAULT_SCREENSHOT_DIR } = options;
   const consoleMessages: string[] = [];
   const pageErrors: string[] = [];
   const failedResources: string[] = [];
   const violations: DomViolation[] = [];
+  let screenshotPath: string | null = null;
+  let screenshotReason: string | undefined = screenshot ? undefined : 'disabled';
 
   let browser;
   try {
@@ -157,6 +172,18 @@ export async function runAuditDom(
 
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(settleMs);
+
+    if (screenshot) {
+      try {
+        await mkdir(screenshotDir, { recursive: true });
+        const path = join(screenshotDir, screenshotFileName(url, 1440, 900));
+        await page.screenshot({ path, fullPage: true });
+        screenshotPath = path;
+      } catch (ssErr) {
+        screenshotPath = null;
+        screenshotReason = ssErr instanceof Error ? ssErr.message : String(ssErr);
+      }
+    }
 
     const result = await page.evaluate(AUDIT_DOM_SCRIPT);
     violations.push(...(result.violations || []));
@@ -197,6 +224,8 @@ export async function runAuditDom(
         : `audit-dom FAIL — ${errors.length} error(s), ${warnings.length} warning(s)`,
       viewport: { width: 1440, height: 900 },
       pageTitle: result.title,
+      screenshot: screenshotPath,
+      screenshotReason,
     };
   } catch (err) {
     return {
@@ -213,6 +242,8 @@ export async function runAuditDom(
       failedResources,
       durationMs: Date.now() - t0,
       summary: `audit-dom ERROR — ${err instanceof Error ? err.message : String(err)}`,
+      screenshot: screenshotPath,
+      screenshotReason,
     };
   } finally {
     if (browser) await browser.close();
@@ -226,6 +257,7 @@ export async function runMultiViewportAuditDom(
   const t0 = Date.now();
   const viewports = options.viewports || [...DEFAULT_VIEWPORTS];
   const results: AuditDomResult[] = [];
+  const { screenshot = true, screenshotDir = DEFAULT_SCREENSHOT_DIR } = options;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let pw: any;
@@ -250,6 +282,8 @@ export async function runMultiViewportAuditDom(
       const pageErrors: string[] = [];
       const failedResources: string[] = [];
       const violations: DomViolation[] = [];
+      let vpShot: string | null = null;
+      let vpShotReason: string | undefined = screenshot ? undefined : 'disabled';
 
       const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
 
@@ -273,6 +307,18 @@ export async function runMultiViewportAuditDom(
 
       await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForTimeout(options.settleMs || 2000);
+
+      if (screenshot) {
+        try {
+          await mkdir(screenshotDir, { recursive: true });
+          const path = join(screenshotDir, screenshotFileName(url, vp.width, vp.height));
+          await page.screenshot({ path, fullPage: true });
+          vpShot = path;
+        } catch (ssErr) {
+          vpShot = null;
+          vpShotReason = ssErr instanceof Error ? ssErr.message : String(ssErr);
+        }
+      }
 
       const result = await page.evaluate(AUDIT_DOM_SCRIPT);
       violations.push(...(result.violations || []));
@@ -302,6 +348,8 @@ export async function runMultiViewportAuditDom(
         summary: `${vp.label} (${vp.width}x${vp.height}): ${errors.length} error(s), ${warnings.length} warning(s)`,
         viewport: { width: vp.width, height: vp.height },
         pageTitle: result.title,
+        screenshot: vpShot,
+        screenshotReason: vpShotReason,
       });
 
       await page.close();
@@ -326,6 +374,8 @@ export function formatAuditDom(result: AuditDomResult, source: string): string {
   lines.push(`\n━━━ DOM Audit: ${source} ━━━`);
   if (result.pageTitle) lines.push(`  Page: ${result.pageTitle}`);
   lines.push(`  Status: ${result.passed ? '✅ PASS' : '❌ FAIL'}`);
+  if (result.screenshot) lines.push(`  Screenshot: ${result.screenshot}`);
+  else if (result.screenshotReason) lines.push(`  Screenshot: (none — ${result.screenshotReason})`);
 
   if (result.violations.length > 0) {
     const byType = new Map<string, DomViolation[]>();
@@ -410,5 +460,6 @@ export function auditDomToJson(result: AuditDomResult): JsonOutput {
       },
     ],
     summary: result.summary,
+    screenshot: result.screenshot,
   });
 }

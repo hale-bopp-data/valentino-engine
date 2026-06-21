@@ -4,6 +4,7 @@ import {
   exportSessionMarkdown, parseSessionJson, sessionStats,
 } from '../../core/review-notes.js';
 import type { ReviewMode, NoteRecord } from '../../core/review-notes.js';
+import { seedSessionFromAudit } from '../../core/audit-to-notes.js';
 
 export function runReviewNotes(args: string[]): void {
     const subcommand = args[0];
@@ -91,6 +92,47 @@ export function runReviewNotes(args: string[]): void {
         return;
     }
 
-    console.error(`Usage: valentino review-notes <new|add|export|stats> [args]`);
+    if (subcommand === 'from-audit') {
+        const file = args[1];
+        if (!file) {
+            console.error('Usage: valentino review-notes from-audit <audit.json> [--out session.json] [--name <name>] [--mode visual|content|accessibility|full]');
+            process.exit(1);
+        }
+
+        const outIdx = args.indexOf('--out');
+        const out = outIdx >= 0 ? args[outIdx + 1] : undefined;
+        const nameIdx = args.indexOf('--name');
+        const name = nameIdx >= 0 ? args[nameIdx + 1] : undefined;
+        const modeIdx = args.indexOf('--mode');
+        const mode = modeIdx >= 0 ? (args[modeIdx + 1] as ReviewMode) : undefined;
+
+        let audit: unknown;
+        try {
+            audit = JSON.parse(readFileSync(file, 'utf-8'));
+        } catch (err) {
+            console.error(`Failed to read/parse audit JSON "${file}": ${err instanceof Error ? err.message : String(err)}`);
+            process.exit(1);
+        }
+
+        let session;
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            session = seedSessionFromAudit(audit as any, { name, mode });
+        } catch (err) {
+            console.error(`Cannot seed session from audit: ${err instanceof Error ? err.message : String(err)}`);
+            process.exit(1);
+        }
+
+        const json = JSON.stringify(session, null, 2);
+        if (out) {
+            writeFileSync(out, json, 'utf-8');
+            console.log(`Seeded session with ${session.notes.length} note(s) from audit: ${out}`);
+        } else {
+            console.log(json);
+        }
+        return;
+    }
+
+    console.error(`Usage: valentino review-notes <new|add|export|stats|from-audit> [args]`);
     process.exit(1);
 }

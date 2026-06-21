@@ -1,5 +1,30 @@
 # Changelog
 
+## [Unreleased]
+
+## [2.15.0] — 2026-06-21
+
+> Visual QA Guardrail (Feature #3080): a reliable automated auditor for app/dashboard UIs, now wired to the human review loop. Consolidates the work merged to `develop` since 2.14.0.
+
+### Added
+- **Visual QA Guardrail — screenshot artifact (#3081)**: `visual-audit` and `audit-dom` always attach a full-page PNG after settle; JSON schema v1→v2 with an optional `screenshot` field; `--screenshot-dir` / `--no-screenshot`. Fail-safe when Playwright is absent.
+- **Visual QA Guardrail — layout contracts (#3083)**: `valentino layout-contract <init|verify>` verifies region semantics (sidebar/main non-overlap, header/footer not covering main, main within viewport, declared z-order). Pure `analyzeLayout()` + Playwright verify; CLI mirrors grid-contract; stable JSON.
+- **Visual QA Guardrail — audit profiles chat/data-table/form (#3084)**: new `AuditProfile`s — `chat` (scrollable message list, composer pinned to bottom, no message-bubble overflow), `data-table` (sticky header on tall tables, wide-table horizontal-scroll containment, row density), `form` (label coverage). `AUDIT_PROFILES` single source of truth.
+- **Visual QA Guardrail — responsive profile (#3082)**: `responsive` profile + per-breakpoint rules — broken-reflow (elements escaping the viewport), clipped content (`overflow:hidden`), mobile touch targets `>=44x44`, mobile nav-collapse (hamburger) detection.
+- **Visual QA Guardrail — Playwright runtime robustness (#3085)**: `src/core/playwright-runtime.ts` — `loadPlaywright` (actionable not-installed reason), `evaluateWithRetry` (targeted retry on "execution context destroyed", fail-loud), `withBrowser` lifecycle wrapper, `DEFAULT_TIMEOUTS` SSoT. `visual-audit` now uses retry + actionable install detection.
+- **Audit → review-notes bridge (#3089)**: `src/core/audit-to-notes.ts` + `valentino review-notes from-audit <audit.json>` — seed a human review session from automated audit findings (closes the auditor → triage loop). `suggestedDirection` added to `NoteRecord` (mirrors the portal Workbench `suggested_direction`), rendered in the markdown export.
+- **Visual-audit hardening (#3072/#3073)**: deterministic IIFE evaluate, `--wait-for <selector>` / `--timeout` / `--settle`, `auto` profile detection, and an advisory layer (prioritized "what to do" recommendations).
+
+### Changed
+- **MCP**: `valentino_probe_rhythm`, `valentino_probe_all`, `valentino_visual_audit` now accept `chat | data-table | form | responsive` profiles (in addition to `landing | spa | dashboard`).
+- **review-notes**: `NoteRecord` gains optional `suggestedDirection`; CLI gains `review-notes from-audit`.
+- **Test suite**: 803 → 908 tests across 59 suites.
+
+### Fixed
+- **MCP server version drift (#3057)**: the MCP server reported a hardcoded `2.13.0` while `package.json` was `2.14.0`. The server version is now derived dynamically from `package.json` (`src/mcp/version.ts`), eliminating the drift permanently, with a regression test.
+- **Visual guardian null-safe (#3073)**: deterministic IIFE + null-safe `page.evaluate`, preventing `undefined` results on some SPA/dashboard pages.
+- **postinstall (#3074)**: consumer `.mcp.json` registration is now opt-in (no consumer-side writes on install).
+
 ## [2.14.0] — 2026-06-21
 
 ### Added

@@ -204,6 +204,23 @@ function buildContrastCheckScript(threshold: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// IIFE wrapper — deterministic page.evaluate invocation (#3073, mirrors #3072)
+// ---------------------------------------------------------------------------
+
+/**
+ * Wrap a string audit script (a zero-arg arrow-function expression) as an IIFE
+ * so that `page.evaluate` ALWAYS resolves to the function's return value — never
+ * the function object itself (which serializes to `undefined` on some SPA /
+ * dashboard pages, or when the execution context is destroyed mid-navigation).
+ *
+ * Same hardening applied in core/visual-audit.ts buildInvocableScript (#3072);
+ * runVisualGuardian lives in a different module that PR #4961 did not cover.
+ */
+export function buildInvocable(script: string): string {
+    return `(${script.trim()})()`;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -281,16 +298,16 @@ export async function runVisualGuardian(
         }
 
         // --- Check 2: Overflow ---
-        const overflowResults = await page.evaluate(OVERFLOW_CHECK_SCRIPT) as VisualViolation[];
+        const overflowResults = (await page.evaluate(buildInvocable(OVERFLOW_CHECK_SCRIPT)) as VisualViolation[] | undefined) ?? [];
         violations.push(...overflowResults.filter(v => v.severity === 'error'));
         warnings.push(...overflowResults.filter(v => v.severity === 'warning'));
 
         // --- Check 3: Collisions ---
-        const collisionResults = await page.evaluate(COLLISION_CHECK_SCRIPT) as VisualViolation[];
+        const collisionResults = (await page.evaluate(buildInvocable(COLLISION_CHECK_SCRIPT)) as VisualViolation[] | undefined) ?? [];
         warnings.push(...collisionResults);
 
         // --- Check 4: Contrast ---
-        const contrastResults = await page.evaluate(buildContrastCheckScript(contrastThreshold)) as VisualViolation[];
+        const contrastResults = (await page.evaluate(buildInvocable(buildContrastCheckScript(contrastThreshold))) as VisualViolation[] | undefined) ?? [];
         warnings.push(...contrastResults);
 
         const passed = violations.length === 0;

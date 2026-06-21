@@ -26,6 +26,7 @@ import { runAuditDom, auditDomToJson } from '../core/audit-dom.js';
 import { suggestFixes, suggestFixToJson, formatPatch, formatTable } from '../core/suggest-fix.js';
 import type { AuditProfile } from '../core/spa-profile.js';
 import type { PageSpecV1, HeroSection, ValentinoCatalogV1, PagesManifestV1 } from '../core/types.js';
+import { VALENTINO_MCP_VERSION } from './version.js';
 
 // ─── Load guardrails.json (SSoT machine-readable) ────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +42,7 @@ if (existsSync(guardrailsPath)) {
 
 const server = new McpServer({
   name: 'valentino-engine',
-  version: '2.13.0',
+  version: VALENTINO_MCP_VERSION,
 });
 
 function jsonResult(data: unknown) {
@@ -186,10 +187,10 @@ server.tool(
 
 server.tool(
   'valentino_probe_rhythm',
-  'Validate section sequence rhythm: hero-first, no consecutive same rhythm, spacer rules. Use profile to switch between landing, SPA, and dashboard audit rules.',
+  'Validate section sequence rhythm: hero-first, no consecutive same rhythm, spacer rules. Use profile to switch audit rules (landing strict; spa/dashboard/chat/data-table/form relaxed).',
   {
     spec: z.string().describe('PageSpec JSON string'),
-    profile: z.enum(['landing', 'spa', 'dashboard']).optional().describe('Audit profile: landing (default), spa (relaxed rhythm for app UIs), dashboard'),
+    profile: z.enum(['landing', 'spa', 'dashboard', 'chat', 'data-table', 'form', 'responsive']).optional().describe('Audit profile: landing (default, strict rhythm), spa/dashboard/chat/data-table/form/responsive (relaxed rhythm for app UIs)'),
   },
   async ({ spec, profile }) => jsonResult(probeRhythm(parseSpec(spec), { profile: profile as AuditProfile })),
 );
@@ -215,10 +216,10 @@ server.tool(
 
 server.tool(
   'valentino_probe_all',
-  'Run all validation probes (rhythm + hero + integrity) on a PageSpec. Use profile to switch between landing, SPA, and dashboard audit rules.',
+  'Run all validation probes (rhythm + hero + integrity) on a PageSpec. Use profile to switch audit rules (landing strict; spa/dashboard/chat/data-table/form relaxed).',
   {
     spec: z.string().describe('PageSpec JSON string'),
-    profile: z.enum(['landing', 'spa', 'dashboard']).optional().describe('Audit profile: landing (default), spa (relaxed rhythm for app UIs), dashboard'),
+    profile: z.enum(['landing', 'spa', 'dashboard', 'chat', 'data-table', 'form', 'responsive']).optional().describe('Audit profile: landing (default, strict rhythm), spa/dashboard/chat/data-table/form/responsive (relaxed rhythm for app UIs)'),
   },
   async ({ spec, profile }) => {
     const pageSpec = parseSpec(spec);
@@ -591,7 +592,7 @@ server.tool(
 
 server.tool(
   'valentino_visual_audit',
-  'Run Playwright visual audit on HTML content or a live URL. Detects horizontal overflow, element collisions, and low-contrast text. Supports responsive mode and SPA/dashboard profiles.',
+  'Run Playwright visual audit on HTML content or a live URL. Detects horizontal overflow, element collisions, and low-contrast text. Supports responsive mode and SPA/dashboard/chat/data-table/form profiles.',
   {
     html: z.string().optional().describe('HTML content to audit. Provide this OR url.'),
     url: z.string().optional().describe('Live URL to audit (e.g., http://127.0.0.1:8765). Provide this OR html.'),
@@ -599,7 +600,7 @@ server.tool(
     viewportWidth: z.number().optional().describe('Custom viewport width (default: 1440)'),
     viewportHeight: z.number().optional().describe('Custom viewport height (default: 900)'),
     contrastThreshold: z.number().optional().describe('WCAG contrast threshold (default: 4.5)'),
-    profile: z.enum(['landing', 'spa', 'dashboard']).optional().describe('Audit profile: landing (default), spa (sidebar/panel/tab-aware), dashboard'),
+    profile: z.enum(['landing', 'spa', 'dashboard', 'chat', 'data-table', 'form', 'responsive']).optional().describe('Audit profile: landing (default), spa (sidebar/panel/tab-aware), dashboard, chat (message list/composer/bubbles), data-table (sticky header/h-scroll/density), form (labels), responsive (per-breakpoint touch-target/nav-collapse/reflow - use with responsive=true)'),
     debug: z.boolean().optional().describe('Enable debug mode: prints injected script preview, raw result, readyState (default: false)'),
   },
   async ({ html, url, responsive, viewportWidth, viewportHeight, contrastThreshold, profile, debug }) => {
