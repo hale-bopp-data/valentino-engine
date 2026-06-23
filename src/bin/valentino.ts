@@ -201,7 +201,7 @@ Usage:
   valentino validate-tokens <file.css>                              Detect self-referencing/circular CSS tokens
   valentino validate-tokens <file.css> --fix [--no-backup]           Auto-fix self-refs + backup original
   valentino refactor <file> [--dry-run] [--apply] [--no-backup]      Preview + apply refactor with self-ref guard
-  valentino certify --security <file.html|file.css>                  Security audit: inline styles, token overrides, event handlers
+  valentino certify --security <file.html|file.css>                  Security + a11y audit: inline styles, tokens, handlers, alt, aria, heading order, focus
   valentino report <file.css|file.html> [--json] [--allow-token-definitions]  Unified report: audit + tokens + security
   valentino visual-audit <file.html|URL> [--responsive] [--json]             Visual audit via Playwright (overflow, collision, contrast)
   valentino watch <file|directory>                                   Watch for changes and auto-audit

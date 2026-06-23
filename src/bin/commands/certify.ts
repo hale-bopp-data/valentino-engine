@@ -6,6 +6,8 @@ export function runCertify(args: string[]): void {
     const subcommand = args[0];
     if (subcommand !== '--security') {
         console.error('Usage: valentino certify --security <file.html|file.css> [--json]');
+        console.error('       Audits: inline styles, token overrides, event handlers,');
+        console.error('               a11y (missing alt, missing aria-label, heading order, focus management)');
         process.exit(1);
     }
 
@@ -13,6 +15,8 @@ export function runCertify(args: string[]): void {
     const json = args.includes('--json');
     if (!file) {
         console.error('Usage: valentino certify --security <file.html|file.css> [--json]');
+        console.error('       Audits: inline styles, token overrides, event handlers,');
+        console.error('               a11y (missing alt, missing aria-label, heading order, focus management)');
         process.exit(1);
     }
 
