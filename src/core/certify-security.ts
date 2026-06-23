@@ -1,5 +1,6 @@
 export interface SecurityViolation {
-  type: 'inline-style' | 'token-override' | 'event-handler';
+  type: 'inline-style' | 'token-override' | 'event-handler'
+    | 'missing-alt' | 'missing-aria' | 'heading-order' | 'focus-management';
   severity: 'critical' | 'warning';
   line: number;
   element?: string;
@@ -13,6 +14,10 @@ export interface SecurityCertification {
     inlineStyleCount: number;
     tokenOverrideCount: number;
     eventHandlerCount: number;
+    missingAltCount: number;
+    missingAriaCount: number;
+    headingOrderCount: number;
+    focusManagementCount: number;
   };
 }
 
@@ -97,6 +102,154 @@ export function checkTokenOverrides(css: string): SecurityViolation[] {
   return violations;
 }
 
+const INTERACTIVE_CONTAINER_RE = /<(button|a|select|textarea)\b([^>]*)(?:>([\s\S]*?)<\/\1>|\/>)/gi;
+
+const INPUT_TAG_RE = /<input\b([^>]*)>/gi;
+
+const ATTR_RE = /\s([\w-]+)\s*=\s*"([^"]*)"/gi;
+
+function parseAttrs(attrString: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  ATTR_RE.lastIndex = 0;
+  let am;
+  while ((am = ATTR_RE.exec(attrString)) !== null) {
+    attrs[am[1].toLowerCase()] = am[2];
+  }
+  return attrs;
+}
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, '').trim();
+}
+
+function attrsHaveAccessibleName(attrs: Record<string, string>): boolean {
+  if ('aria-label' in attrs && attrs['aria-label'].trim() !== '') return true;
+  if ('aria-labelledby' in attrs) return true;
+  if ('title' in attrs && attrs.title.trim() !== '') return true;
+  if ('placeholder' in attrs && attrs.placeholder.trim() !== '') return true;
+  return false;
+}
+
+export function checkMissingAlt(html: string): SecurityViolation[] {
+  const violations: SecurityViolation[] = [];
+  const imgRe = /<img\b([^>]*)>/gi;
+  imgRe.lastIndex = 0;
+  let match;
+  while ((match = imgRe.exec(html)) !== null) {
+    const attrs = parseAttrs(match[1]);
+    if (!('alt' in attrs)) {
+      violations.push({
+        type: 'missing-alt',
+        severity: 'critical',
+        line: lineAt(html, match.index),
+        element: 'img',
+        detail: `<img> without alt attribute (src="${(attrs.src || '').substring(0, 50)}")`,
+      });
+    }
+  }
+  return violations;
+}
+
+export function checkMissingAria(html: string): SecurityViolation[] {
+  const violations: SecurityViolation[] = [];
+
+  INPUT_TAG_RE.lastIndex = 0;
+  let match;
+  while ((match = INPUT_TAG_RE.exec(html)) !== null) {
+    const attrs = parseAttrs(match[1]);
+    const inputType = (attrs.type || '').toLowerCase();
+    if (['hidden', 'submit', 'button', 'image'].includes(inputType)) continue;
+    if (attrsHaveAccessibleName(attrs)) continue;
+    violations.push({
+      type: 'missing-aria',
+      severity: 'critical',
+      line: lineAt(html, match.index),
+      element: 'input',
+      detail: `<input> without accessible name (no aria-label, title, or placeholder)`,
+    });
+  }
+
+  INTERACTIVE_CONTAINER_RE.lastIndex = 0;
+  while ((match = INTERACTIVE_CONTAINER_RE.exec(html)) !== null) {
+    const tag = match[1].toLowerCase();
+    const attrs = parseAttrs(match[2]);
+    const innerText = match[3] !== undefined ? stripTags(match[3]) : '';
+
+    if (tag === 'a' && !('href' in attrs)) continue;
+
+    if (attrsHaveAccessibleName(attrs) || innerText !== '') continue;
+
+    violations.push({
+      type: 'missing-aria',
+      severity: 'critical',
+      line: lineAt(html, match.index),
+      element: tag,
+      detail: `<${tag}> without accessible name (no aria-label, text content, title, or placeholder)`,
+    });
+  }
+  return violations;
+}
+
+export function checkHeadingOrder(html: string): SecurityViolation[] {
+  const violations: SecurityViolation[] = [];
+  const headingRe = /<(h[1-6])\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  const headings: { level: number; line: number; index: number }[] = [];
+  headingRe.lastIndex = 0;
+  let match;
+  while ((match = headingRe.exec(html)) !== null) {
+    const level = parseInt(match[1][1], 10);
+    headings.push({ level, line: lineAt(html, match.index), index: match.index });
+  }
+
+  let h1Count = 0;
+  for (let i = 0; i < headings.length; i++) {
+    const h = headings[i];
+    if (h.level === 1) {
+      h1Count++;
+      if (h1Count > 1) {
+        violations.push({
+          type: 'heading-order',
+          severity: 'warning',
+          line: h.line,
+          detail: `Multiple <h1> found (${h1Count}); page should have a single <h1>`,
+        });
+      }
+    }
+    if (i > 0) {
+      const prev = headings[i - 1];
+      if (h.level > prev.level + 1) {
+        violations.push({
+          type: 'heading-order',
+          severity: 'warning',
+          line: h.line,
+          detail: `Heading skips level: <h${prev.level}> followed by <h${h.level}> (should not skip levels)`,
+        });
+      }
+    }
+  }
+  return violations;
+}
+
+export function checkFocusManagement(html: string): SecurityViolation[] {
+  const violations: SecurityViolation[] = [];
+  const tabindexRe = /<(\w[\w-]*)\b([^>]*?)\btabindex\s*=\s*"([^"]*)"/gi;
+  tabindexRe.lastIndex = 0;
+  let match;
+  while ((match = tabindexRe.exec(html)) !== null) {
+    const value = parseInt(match[3].trim(), 10);
+    if (!isNaN(value) && value > 0) {
+      violations.push({
+        type: 'focus-management',
+        severity: 'warning',
+        line: lineAt(html, match.index),
+        element: match[1].toLowerCase(),
+        detail: `tabindex="${value}" on <${match[1]}> — positive tabindex breaks natural tab order (use 0 or -1)`,
+      });
+    }
+  }
+  return violations;
+}
+
 export function certifySecurity(html: string): SecurityCertification {
   const inlineViolations = checkInlineStyles(html);
   const eventViolations = checkEventHandlers(html);
@@ -111,7 +264,16 @@ export function certifySecurity(html: string): SecurityCertification {
   const css = cssBlocks.join('\n');
   const tokenViolations = checkTokenOverrides(css);
 
-  const violations = [...inlineViolations, ...eventViolations, ...tokenViolations];
+  const missingAltViolations = checkMissingAlt(html);
+  const missingAriaViolations = checkMissingAria(html);
+  const headingOrderViolations = checkHeadingOrder(html);
+  const focusViolations = checkFocusManagement(html);
+
+  const violations = [
+    ...inlineViolations, ...eventViolations, ...tokenViolations,
+    ...missingAltViolations, ...missingAriaViolations,
+    ...headingOrderViolations, ...focusViolations,
+  ];
 
   return {
     certified: violations.filter(v => v.severity === 'critical').length === 0,
@@ -120,6 +282,10 @@ export function certifySecurity(html: string): SecurityCertification {
       inlineStyleCount: inlineViolations.length,
       tokenOverrideCount: tokenViolations.length,
       eventHandlerCount: eventViolations.length,
+      missingAltCount: missingAltViolations.length,
+      missingAriaCount: missingAriaViolations.length,
+      headingOrderCount: headingOrderViolations.length,
+      focusManagementCount: focusViolations.length,
     },
   };
 }
@@ -134,6 +300,10 @@ export function certifySecurityCss(css: string): SecurityCertification {
       inlineStyleCount: 0,
       tokenOverrideCount: tokenViolations.length,
       eventHandlerCount: 0,
+      missingAltCount: 0,
+      missingAriaCount: 0,
+      headingOrderCount: 0,
+      focusManagementCount: 0,
     },
   };
 }
@@ -146,6 +316,10 @@ export function formatCertification(cert: SecurityCertification, filePath: strin
   lines.push(`  Inline styles: ${summary.inlineStyleCount}`);
   lines.push(`  Token overrides: ${summary.tokenOverrideCount}`);
   lines.push(`  Event handlers: ${summary.eventHandlerCount}`);
+  lines.push(`  Missing alt: ${summary.missingAltCount}`);
+  lines.push(`  Missing aria: ${summary.missingAriaCount}`);
+  lines.push(`  Heading order: ${summary.headingOrderCount}`);
+  lines.push(`  Focus management: ${summary.focusManagementCount}`);
   lines.push('');
 
   if (cert.violations.length === 0) {
