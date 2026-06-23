@@ -35,6 +35,7 @@ import { runTemplateAudit } from './commands/template-audit.js';
 import { runReviewNotes } from './commands/review-notes.js';
 import { runAuditDomCmd } from './commands/audit-dom.js';
 import { runSuggestFix } from './commands/suggest-fix.js';
+import { runFullAudit } from './commands/full-audit.js';
 
 const [,, command, ...args] = process.argv;
 
@@ -163,6 +164,10 @@ switch (command) {
         runSuggestFix(args);
         break;
 
+    case 'full-audit':
+        runFullAudit(args).catch(e => { console.error(e); process.exit(1); });
+        break;
+
     case 'mcp':
         import('../mcp/index.js').catch(e => { console.error('MCP server failed:', e); process.exit(1); });
         break;
@@ -211,6 +216,9 @@ Usage:
   valentino review-notes stats <session.json>                        Session statistics
   valentino review-notes from-audit <audit.json> [--out file.json]   Seed review session from a visual-audit JSON (#3089)
   valentino audit-dom <url> [--json] [--responsive]                  Runtime DOM audit via Playwright (inline styles, overflow, 404, a11y)
+  valentino full-audit <url> [--responsive] [--json]             Unified audit: audit-dom + visual-audit
+  valentino full-audit --dir <dir> [--json]                      Unified audit: audit-html + certify + probe
+  valentino full-audit <file.html|file.css|file.json> [--json]   Unified static audit on single file
   valentino suggest-fix <file> [--format patch|table|json] [--json]  Suggest fixes without modifying (inline→class, px→rem, color→token)
   valentino mcp                                                      Start MCP server (stdio, 24 tools)
 
