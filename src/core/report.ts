@@ -1,20 +1,8 @@
 import { readFileSync } from 'fs';
-import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from './guardrails.js';
-import type { GuardrailOptions } from './guardrails.js';
-import { auditHtml } from './audit-html.js';
-import { validateTokens } from './validate-tokens.js';
-import { certifySecurity, certifySecurityCss } from './certify-security.js';
-import type { SecurityCertification } from './certify-security.js';
-import type { ValidateTokensResult } from './validate-tokens.js';
-import type { HtmlAuditResult } from './audit-html.js';
+import { runAudit, detectFileType } from './audit-pipeline.js';
+import type { AuditSection, AuditOptions } from './audit-pipeline.js';
 
-export interface ReportSection {
-  name: string;
-  status: 'pass' | 'fail' | 'warn' | 'skip';
-  violations: number;
-  warnings: number;
-  details: string[];
-}
+export type ReportSection = AuditSection;
 
 export interface UnifiedReport {
   file: string;
@@ -25,112 +13,19 @@ export interface UnifiedReport {
   passed: boolean;
 }
 
-export interface ReportOptions {
-  allowTokenDefinitions?: boolean;
-  allowedTokenPrefixes?: string[];
-}
-
-function detectType(filePath: string): 'css' | 'html' {
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'html';
-  return 'css';
-}
-
-function auditCssSection(css: string, guardrailOpts?: GuardrailOptions): ReportSection {
-  const px = checkNoHardcodedPx(css, guardrailOpts);
-  const color = checkNoHardcodedColor(css, guardrailOpts);
-  const named = checkNoNamedColor(css, guardrailOpts);
-  const all = [...px, ...color, ...named];
-  return {
-    name: 'CSS Guardrails',
-    status: all.length === 0 ? 'pass' : 'fail',
-    violations: all.length,
-    warnings: 0,
-    details: all,
-  };
-}
-
-function auditHtmlSection(html: string, options?: GuardrailOptions): ReportSection {
-  const result: HtmlAuditResult = auditHtml(html, options);
-  return {
-    name: 'HTML Audit',
-    status: result.valid ? 'pass' : 'fail',
-    violations: result.violations.length,
-    warnings: 0,
-    details: result.violations.map(v => {
-      const src = v.source === 'inline-style' ? `<${v.element}> inline` : '<style>';
-      return `[${src}, line ${v.line}] ${v.message}`;
-    }),
-  };
-}
-
-function tokenSection(css: string): ReportSection {
-  const result: ValidateTokensResult = validateTokens(css);
-  return {
-    name: 'Token Validation',
-    status: result.valid ? 'pass' : 'fail',
-    violations: result.violations.length,
-    warnings: 0,
-    details: result.violations.map(v => `[${v.type}] ${v.token}: ${v.detail}`),
-  };
-}
-
-function securitySection(content: string, fileType: 'css' | 'html'): ReportSection {
-  const cert: SecurityCertification = fileType === 'html'
-    ? certifySecurity(content)
-    : certifySecurityCss(content);
-  const critical = cert.violations.filter(v => v.severity === 'critical');
-  const warnings = cert.violations.filter(v => v.severity === 'warning');
-  return {
-    name: 'Security Certification',
-    status: cert.certified ? (warnings.length > 0 ? 'warn' : 'pass') : 'fail',
-    violations: critical.length,
-    warnings: warnings.length,
-    details: cert.violations.map(v => `[${v.severity}] line ${v.line}: ${v.detail}`),
-  };
-}
-
-function extractCss(html: string): string {
-  const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
-  const blocks: string[] = [];
-  let m;
-  styleRe.lastIndex = 0;
-  while ((m = styleRe.exec(html)) !== null) blocks.push(m[1]);
-  return blocks.join('\n');
-}
+export type ReportOptions = AuditOptions;
 
 export function generateReport(filePath: string, options?: ReportOptions): UnifiedReport {
   const content = readFileSync(filePath, 'utf-8');
-  const fileType = detectType(filePath);
-  const sections: ReportSection[] = [];
-  const guardrailOpts: GuardrailOptions | undefined = options?.allowTokenDefinitions
-    ? { allowTokenDefinitions: true, allowedTokenPrefixes: options.allowedTokenPrefixes }
-    : undefined;
-
-  if (fileType === 'html') {
-    sections.push(auditHtmlSection(content, guardrailOpts));
-    const css = extractCss(content);
-    if (css.trim()) {
-      sections.push(auditCssSection(css, guardrailOpts));
-      sections.push(tokenSection(css));
-    }
-    sections.push(securitySection(content, 'html'));
-  } else {
-    sections.push(auditCssSection(content, guardrailOpts));
-    sections.push(tokenSection(content));
-    sections.push(securitySection(content, 'css'));
-  }
-
-  const totalViolations = sections.reduce((s, sec) => s + sec.violations, 0);
-  const totalWarnings = sections.reduce((s, sec) => s + sec.warnings, 0);
-
+  const fileType = detectFileType(filePath);
+  const result = runAudit(content, fileType, options);
   return {
     file: filePath,
-    fileType,
-    sections,
-    totalViolations,
-    totalWarnings,
-    passed: totalViolations === 0,
+    fileType: result.fileType,
+    sections: result.sections,
+    totalViolations: result.totalViolations,
+    totalWarnings: result.totalWarnings,
+    passed: result.passed,
   };
 }
 

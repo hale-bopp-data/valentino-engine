@@ -37,7 +37,7 @@ describe('auditFileForWatch — CSS', () => {
     fs.writeFileSync(file, '--loop: var(--loop);');
     const event = auditFileForWatch(file);
     expect(event.violations).toBeGreaterThan(0);
-    expect(event.details.some(d => d.includes('[token]'))).toBe(true);
+    expect(event.details.some(d => d.includes('--loop'))).toBe(true);
   });
 
   it('detects token override warnings', () => {

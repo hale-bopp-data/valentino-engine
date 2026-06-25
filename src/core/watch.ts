@@ -1,9 +1,6 @@
 import { watch as fsWatch, readFileSync, statSync } from 'fs';
 import { resolve, extname } from 'path';
-import { checkNoHardcodedPx, checkNoHardcodedColor, checkNoNamedColor } from './guardrails.js';
-import { auditHtml } from './audit-html.js';
-import { validateTokens } from './validate-tokens.js';
-import { certifySecurity, certifySecurityCss } from './certify-security.js';
+import { runAudit, detectFileType } from './audit-pipeline.js';
 
 export interface WatchEvent {
   file: string;
@@ -18,77 +15,17 @@ export interface WatchOptions {
   onEvent?: (event: WatchEvent) => void;
 }
 
-function detectType(filePath: string): 'css' | 'html' {
-  const ext = extname(filePath).toLowerCase();
-  if (ext === '.html' || ext === '.htm') return 'html';
-  return 'css';
-}
-
-function extractCss(html: string): string {
-  const styleRe = /<style[^>]*>([\s\S]*?)<\/style>/gi;
-  const blocks: string[] = [];
-  let m;
-  styleRe.lastIndex = 0;
-  while ((m = styleRe.exec(html)) !== null) blocks.push(m[1]);
-  return blocks.join('\n');
-}
-
 function auditFile(filePath: string): WatchEvent {
   const content = readFileSync(filePath, 'utf-8');
-  const fileType = detectType(filePath);
-  const details: string[] = [];
-  let violations = 0;
-  let warnings = 0;
-
-  if (fileType === 'html') {
-    const htmlResult = auditHtml(content);
-    violations += htmlResult.violations.length;
-    for (const v of htmlResult.violations) {
-      details.push(`[html] line ${v.line}: ${v.message}`);
-    }
-
-    const css = extractCss(content);
-    if (css.trim()) {
-      const tokenResult = validateTokens(css);
-      violations += tokenResult.violations.length;
-      for (const v of tokenResult.violations) {
-        details.push(`[token] ${v.token}: ${v.detail}`);
-      }
-    }
-
-    const cert = certifySecurity(content);
-    const critical = cert.violations.filter(v => v.severity === 'critical');
-    const warns = cert.violations.filter(v => v.severity === 'warning');
-    violations += critical.length;
-    warnings += warns.length;
-    for (const v of critical) details.push(`[security] ${v.detail}`);
-    for (const v of warns) details.push(`[security-warn] ${v.detail}`);
-  } else {
-    const px = checkNoHardcodedPx(content);
-    const color = checkNoHardcodedColor(content);
-    const named = checkNoNamedColor(content);
-    violations += px.length + color.length + named.length;
-    details.push(...px, ...color, ...named);
-
-    const tokenResult = validateTokens(content);
-    violations += tokenResult.violations.length;
-    for (const v of tokenResult.violations) {
-      details.push(`[token] ${v.token}: ${v.detail}`);
-    }
-
-    const cert = certifySecurityCss(content);
-    warnings += cert.violations.length;
-    for (const v of cert.violations) {
-      details.push(`[security-warn] ${v.detail}`);
-    }
-  }
+  const fileType = detectFileType(filePath);
+  const result = runAudit(content, fileType);
 
   return {
     file: filePath,
     timestamp: new Date().toISOString(),
-    violations,
-    warnings,
-    details,
+    violations: result.totalViolations,
+    warnings: result.totalWarnings,
+    details: result.sections.flatMap(s => s.details),
   };
 }
 
