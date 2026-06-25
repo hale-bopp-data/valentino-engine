@@ -1,0 +1,41 @@
+# EOL normalization — Bug #3152
+# Root cause: core.autocrlf=true + no .gitattributes -> git rewrote LF (index) to
+# CRLF on Windows checkout, breaking bash on self-check.sh / cockpit.sh ($'\r').
+# Fix: enforce EOL structurally so behavior no longer depends on local git config.
+
+# Default: detect text, normalize to LF in the repo.
+* text=auto
+
+# POSIX shell scripts MUST be LF everywhere — CRLF breaks bash.
+*.sh text eol=lf
+
+# Windows scripts stay CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Source / config: explicit LF (npm/TS package convention).
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary assets: never normalize.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.svg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
